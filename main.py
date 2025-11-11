@@ -1,13 +1,20 @@
 # main.py (Enhanced)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from inventor_api import get_fx_parameters, update_fx_parameter, get_mappings, save_mappings
+from inventor_api import (
+    get_user_parameters,
+    get_fx_parameters,  # Backward compatibility
+    update_fx_parameter,
+    update_parameter_mapping,
+    get_mappings,
+    save_mappings
+)
 import uvicorn
 
 app = FastAPI(
-    title="CalcsLive Inventor Bridge",
-    description="HTTP bridge for Inventor f(x) parameter access",
-    version="0.1.0"
+    title="CalcsLive Plug for Inventor",
+    description="HTTP bridge for Inventor User Parameters with CalcsLive integration",
+    version="1.0.0"
 )
 
 # CORS for CalcsLive dashboard
@@ -25,41 +32,43 @@ app.add_middleware(
 @app.get("/")
 def root():
     """Health check endpoint"""
-    return {"status": "ok", "service": "CalcsLive Inventor Bridge"}
+    return {"status": "ok", "service": "CalcsLive Plug for Inventor"}
 
-@app.get("/status")
-def get_status():
-    """Check if Inventor is accessible"""
-    result = get_fx_parameters()
+@app.get("/inventor/health")
+def health_check():
+    """Health check for Inventor-specific endpoints"""
+    return {"status": "ok", "service": "CalcsLive Plug for Inventor", "version": "1.0.0"}
+
+@app.get("/inventor/document")
+def get_document_info():
+    """Get active Inventor document information"""
+    result = get_user_parameters()
     if result.get("success"):
         return {
             "status": "connected",
-            "inventor": "running",
-            "document": result.get("documentName"),
-            "parameterCount": len(result.get("parameters", {}))
+            "documentName": result.get("documentName"),
+            "parameterCount": len(result.get("parameters", []))
         }
     else:
-        return {
-            "status": "disconnected",
-            "inventor": "not_running" if "Inventor.Application" in result.get("error", "") else "error",
-            "error": result.get("error")
-        }
+        raise HTTPException(status_code=503, detail=result.get("error"))
 
-@app.get("/parameters")
-def read_parameters():
-    """Export all f(x) parameters from active Inventor document"""
-    result = get_fx_parameters()
-    
-    # Return error with proper HTTP status
+@app.get("/inventor/parameters")
+def read_user_parameters():
+    """
+    Get User Parameters from active Inventor document.
+    Includes Comment field parsing for CalcsLive mappings and dimensional analysis.
+    """
+    result = get_user_parameters()
+
     if not result.get("success"):
         raise HTTPException(status_code=503, detail=result.get("error"))
-    
+
     return result
 
-@app.post("/parameters/update")
-def update_parameter(data: dict):
+@app.post("/inventor/parameters/update")
+def update_parameter_value(data: dict):
     """
-    Update a single f(x) parameter value
+    Update a User Parameter value (without affecting mapping).
 
     Request body:
     {
@@ -84,10 +93,86 @@ def update_parameter(data: dict):
 
     return result
 
+@app.post("/inventor/parameters/mapping")
+def set_parameter_mapping(data: dict):
+    """
+    Set or update User Parameter Comment field with CalcsLive mapping.
+    Optionally also update the parameter value.
+
+    Request body:
+    {
+        "name": "Length",           // required
+        "symbol": "L",              // optional - CalcsLive PQ symbol
+        "note": "Main beam length", // optional - user note
+        "value": 5.0,               // optional - new value
+        "unit": "m"                 // optional - unit for new value
+    }
+
+    To remove mapping, pass symbol=null or omit it
+    """
+    name = data.get("name")
+    symbol = data.get("symbol")
+    note = data.get("note")
+    value = data.get("value")
+    unit = data.get("unit")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Parameter 'name' is required")
+
+    result = update_parameter_mapping(name, symbol, note, value, unit)
+
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+
+    return result
+
+@app.delete("/inventor/parameters/mapping")
+def remove_parameter_mapping(data: dict):
+    """
+    Remove CalcsLive mapping from User Parameter Comment field.
+
+    Request body:
+    {
+        "name": "Length"  // required
+    }
+    """
+    name = data.get("name")
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Parameter 'name' is required")
+
+    # Clear mapping by setting symbol to None
+    result = update_parameter_mapping(name, symbol=None, note=None)
+
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+
+    return result
+
+
+# ====================
+# Legacy Endpoints (Backward Compatibility)
+# ====================
+
+@app.get("/parameters")
+def legacy_read_parameters():
+    """
+    DEPRECATED: Use /inventor/parameters instead
+    Export all f(x) parameters from active Inventor document
+    """
+    result = get_fx_parameters()
+
+    if not result.get("success"):
+        raise HTTPException(status_code=503, detail=result.get("error"))
+
+    return result
 
 @app.get("/mappings")
 def read_mappings():
-    """Get CalcsLive mappings stored in Inventor file custom properties"""
+    """
+    DEPRECATED: PropertySets mapping approach (AC3D Bridge uses Comment field now)
+    Get CalcsLive mappings stored in Inventor file custom properties
+    """
     result = get_mappings()
 
     if not result.get("success"):
@@ -95,13 +180,11 @@ def read_mappings():
 
     return result
 
-
 @app.post("/mappings")
 def write_mappings(data: dict):
     """
+    DEPRECATED: PropertySets mapping approach (AC3D Bridge uses Comment field now)
     Save CalcsLive mappings to Inventor file custom properties
-
-    Request body: mappings dictionary (will be JSON serialized)
     """
     result = save_mappings(data)
 

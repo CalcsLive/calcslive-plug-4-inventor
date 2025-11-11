@@ -1,64 +1,153 @@
 # inventor_api.py (Enhanced)
 import pythoncom
 import win32com.client
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
-def get_fx_parameters() -> Dict[str, Any]:
+
+def parse_comment_mapping(comment: str) -> Dict[str, Optional[str]]:
     """
-    Get f(x) parameters from active Inventor document.
-    
+    Parse Inventor parameter Comment field for CalcsLive mapping.
+
+    Format: "#AC:symbol #Note:{{user text}}"
+
+    Args:
+        comment: Parameter comment string
+
     Returns:
-        Dict with parameter data or error message
+        Dict with 'mapping' and 'note' keys
+        Example: {"mapping": "flow_rate", "note": "Main pump flow"}
+    """
+    result = {"mapping": None, "note": None}
+
+    if not comment:
+        return result
+
+    parts = comment.split()
+    for part in parts:
+        if part.startswith('#AC:'):
+            result["mapping"] = part[4:]  # Extract symbol after #AC:
+        elif part.startswith('#Note:'):
+            # Extract note text, removing {{ and }}
+            note_text = part[6:]  # Remove #Note: prefix
+            result["note"] = note_text.strip('{}')
+
+    return result
+
+
+def build_comment_string(symbol: Optional[str], note: Optional[str]) -> str:
+    """
+    Build Comment field string with mapping and optional note.
+
+    Args:
+        symbol: CalcsLive PQ symbol (e.g., "flow_rate")
+        note: Optional user note text
+
+    Returns:
+        Formatted comment string
+        Example: "#AC:flow_rate #Note:{{Main pump flow rate}}"
+    """
+    parts = []
+
+    if symbol:
+        parts.append(f"#AC:{symbol}")
+
+    if note:
+        # Clean note text and wrap in {{ }}
+        clean_note = note.replace('{{', '').replace('}}', '').strip()
+        if clean_note:
+            parts.append(f"#Note:{{{{{clean_note}}}}}")
+
+    return ' '.join(parts)
+
+
+def get_user_parameters() -> Dict[str, Any]:
+    """
+    Get User Parameters ONLY from active Inventor document.
+    Works for Parts and Assemblies - treats them the same (single component approach).
+    Includes Comment field parsing for CalcsLive mappings.
+
+    IMPORTANT: Values are in Inventor internal units (cm-based).
+    Dashboard must handle conversion to/from SI units using dimensional analysis.
+
+    Returns:
+        Dict with user parameters array or error message
+
+    Example return:
+        {
+            "success": True,
+            "documentName": "beam_calc.ipt",
+            "parameters": [
+                {
+                    "name": "Length",
+                    "value": 500.0,  # Inventor internal units (cm)
+                    "unit": "mm",    # User's display unit
+                    "expression": "",
+                    "comment": "#AC:L #Note:{{Main beam length}}",
+                    "mapping": "L",
+                    "note": "Main beam length",
+                    "isReadOnly": False
+                }
+            ]
+        }
+
+    Note: Dashboard handles unit conversion using CalcsLive units API:
+        - Query /api/units/dimension?unit={unit} for dimensional data
+        - Convert: inventor_cm_value / (100^L) = si_m_value
+        - Where L is the length dimension power from dimensional analysis
     """
     pythoncom.CoInitialize()
     try:
         # Connect to running Inventor instance
         app = win32com.client.GetActiveObject("Inventor.Application")
         doc = app.ActiveDocument
-        
+
         # Verify document exists
         if doc is None:
-            return {"error": "No active Inventor document"}
+            return {"success": False, "error": "No active Inventor document"}
 
-        # Document type constants
-        kPartDocumentObject = 12291
-        kAssemblyDocumentObject = 12292
-
-        # Debug: Log the actual document type
-        actual_doc_type = doc.DocumentType
-        print(f"DEBUG: Document type = {actual_doc_type}")
-
-        # For now, let's be more lenient and just check if ComponentDefinition exists
+        # Check if ComponentDefinition exists (works for Parts and Assemblies)
         if not hasattr(doc, 'ComponentDefinition'):
             return {
                 "success": False,
-                "error": f"Document does not have ComponentDefinition. Document type: {actual_doc_type}"
+                "error": "Document does not have ComponentDefinition"
             }
 
-        params = doc.ComponentDefinition.Parameters
-        result = {}
+        # Get User Parameters ONLY (not all Parameters)
+        user_params = doc.ComponentDefinition.Parameters.UserParameters
+        result = []
 
-        for param in params:
+        for param in user_params:
             try:
-                # Safely access parameter properties with fallbacks
+                # Safely access parameter properties
                 param_name = param.Name if hasattr(param, 'Name') else str(param)
+                param_value = param.Value if hasattr(param, 'Value') else 0
+                param_unit = param.Units if (hasattr(param, 'Units') and param.Units) else ""
+                param_expression = param.Expression if hasattr(param, 'Expression') else ""
+                param_comment = param.Comment if hasattr(param, 'Comment') else ""
+                param_readonly = param.IsReadOnly if hasattr(param, 'IsReadOnly') else False
 
-                result[param_name] = {
-                    "value": param.Value if hasattr(param, 'Value') else 0,
-                    "unit": param.Units if (hasattr(param, 'Units') and param.Units) else "",
-                    "expression": param.Expression if hasattr(param, 'Expression') else "",
-                    "isReadOnly": param.IsReadOnly if hasattr(param, 'IsReadOnly') else False,
-                    "comment": param.Comment if hasattr(param, 'Comment') else "",
-                }
+                # Parse Comment field for mapping
+                comment_data = parse_comment_mapping(param_comment)
+
+                result.append({
+                    "name": param_name,
+                    "value": param_value,  # Inventor internal units (cm-based)
+                    "unit": param_unit,
+                    "expression": param_expression,
+                    "comment": param_comment,
+                    "mapping": comment_data["mapping"],
+                    "note": comment_data["note"],
+                    "isReadOnly": param_readonly
+                })
+
             except Exception as param_error:
                 # If we can't read this parameter, skip it and log
-                print(f"WARNING: Could not read parameter: {param_error}")
+                print(f"WARNING: Could not read parameter '{param_name}': {param_error}")
                 continue
-        
+
         return {
             "success": True,
-            "documentName": doc.DisplayName,  # ✨ NEW: Document context
-            "documentType": "Part" if doc.DocumentType == kPartDocumentObject else "Assembly",
+            "documentName": doc.DisplayName,  # User-friendly metadata
             "parameters": result
         }
 
@@ -66,10 +155,21 @@ def get_fx_parameters() -> Dict[str, Any]:
         return {
             "success": False,
             "error": str(e),
-            "errorType": type(e).__name__  # ✨ NEW: Error classification
+            "errorType": type(e).__name__
         }
     finally:
         pythoncom.CoUninitialize()
+
+
+# Backward compatibility alias
+def get_fx_parameters() -> Dict[str, Any]:
+    """
+    Backward compatibility wrapper for get_user_parameters().
+
+    DEPRECATED: Use get_user_parameters() instead.
+    This now returns User Parameters only (not all parameters).
+    """
+    return get_user_parameters()
 
 
 def update_fx_parameter(name: str, value: float, unit: str = None) -> Dict[str, Any]:
@@ -118,6 +218,81 @@ def update_fx_parameter(name: str, value: float, unit: str = None) -> Dict[str, 
             "success": True,
             "parameter": name,
             "newValue": param.Value,
+            "unit": param.Units
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "errorType": type(e).__name__
+        }
+    finally:
+        pythoncom.CoUninitialize()
+
+
+def update_parameter_mapping(name: str, symbol: Optional[str] = None, note: Optional[str] = None,
+                            value: Optional[float] = None, unit: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Update User Parameter's Comment field with CalcsLive mapping.
+    Optionally also update the parameter's value.
+
+    Args:
+        name: Parameter name (e.g., "Length", "Width")
+        symbol: CalcsLive PQ symbol to map to (e.g., "L", "flow_rate")
+        note: Optional user note text
+        value: Optional new value to set
+        unit: Optional unit for the new value
+
+    Returns:
+        Dict with success status or error message
+
+    Example:
+        update_parameter_mapping("Length", symbol="L", note="Main beam length", value=5.0, unit="m")
+    """
+    pythoncom.CoInitialize()
+    try:
+        app = win32com.client.GetActiveObject("Inventor.Application")
+        doc = app.ActiveDocument
+
+        if doc is None:
+            return {"success": False, "error": "No active Inventor document"}
+
+        # Access User Parameters
+        user_params = doc.ComponentDefinition.Parameters.UserParameters
+
+        # Find parameter by name
+        try:
+            param = user_params.Item(name)
+        except:
+            return {"success": False, "error": f"User Parameter '{name}' not found"}
+
+        # Update Comment field with mapping
+        new_comment = build_comment_string(symbol, note)
+        param.Comment = new_comment
+
+        # Optionally update value
+        if value is not None:
+            if param.IsReadOnly:
+                return {
+                    "success": False,
+                    "error": f"Parameter '{name}' is read-only (calculated)",
+                    "comment": new_comment  # Comment was updated even if value update failed
+                }
+
+            if unit and unit != param.Units:
+                # Inventor handles unit conversion automatically
+                param.Expression = f"{value} {unit}"
+            else:
+                param.Value = value
+
+        return {
+            "success": True,
+            "parameter": name,
+            "comment": param.Comment,
+            "mapping": symbol,
+            "note": note,
+            "value": param.Value,
             "unit": param.Units
         }
 
