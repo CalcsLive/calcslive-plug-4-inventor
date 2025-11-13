@@ -124,20 +124,60 @@ def get_user_parameters() -> Dict[str, Any]:
                 param_unit = param.Units if (hasattr(param, 'Units') and param.Units) else ""
                 param_expression = param.Expression if hasattr(param, 'Expression') else ""
                 param_comment = param.Comment if hasattr(param, 'Comment') else ""
-                param_readonly = param.IsReadOnly if hasattr(param, 'IsReadOnly') else False
+
+                # Get internal unit and display value using Inventor's API
+                internal_unit = ""
+                display_value = None
+
+                try:
+                    # Get internal/database unit from expression using Inventor's API
+                    # This tells us what unit Inventor uses internally (e.g., "cm", "g", "rad")
+                    if param_expression and param_unit:
+                        internal_unit = doc.UnitsOfMeasure.GetDatabaseUnitsFromExpression(
+                            param_expression,
+                            param_unit
+                        )
+                    elif param_unit:
+                        # For parameters without expression, infer from unit
+                        # Use empty expression to get default database unit for this unit type
+                        internal_unit = doc.UnitsOfMeasure.GetDatabaseUnitsFromExpression(
+                            "",
+                            param_unit
+                        )
+                except Exception as unit_error:
+                    print(f"WARNING: Could not get internal unit for '{param_name}': {unit_error}")
+                    internal_unit = ""
+
+                # Get display value using Inventor's unit conversion
+                if internal_unit and param_unit and param_value is not None:
+                    try:
+                        # Convert from internal unit to display unit
+                        display_value = doc.UnitsOfMeasure.ConvertUnits(
+                            param_value,  # Internal/database value
+                            internal_unit,  # From internal unit (e.g., "cm", "g", "rad")
+                            param_unit  # To display unit (e.g., "mm", "kg", "deg")
+                        )
+                    except Exception as conv_error:
+                        # Conversion failed - use raw value as fallback
+                        display_value = param_value
+                        print(f"WARNING: Unit conversion failed for '{param_name}': {conv_error}")
+                else:
+                    # No units or missing info - use raw value
+                    display_value = param_value
 
                 # Parse Comment field for mapping
                 comment_data = parse_comment_mapping(param_comment)
 
                 result.append({
                     "name": param_name,
-                    "value": param_value,  # Inventor internal units (cm-based)
-                    "unit": param_unit,
+                    "value": param_value,  # Inventor internal/database units
+                    "displayValue": display_value,  # Value in display unit (from Inventor)
+                    "unit": param_unit,  # Display unit (e.g., "mm", "in")
+                    "internalUnit": internal_unit,  # Internal unit (empty - inferred by dashboard)
                     "expression": param_expression,
                     "comment": param_comment,
                     "mapping": comment_data["mapping"],
-                    "note": comment_data["note"],
-                    "isReadOnly": param_readonly
+                    "note": comment_data["note"]
                 })
 
             except Exception as param_error:
@@ -271,20 +311,24 @@ def update_parameter_mapping(name: str, symbol: Optional[str] = None, note: Opti
         new_comment = build_comment_string(symbol, note)
         param.Comment = new_comment
 
-        # Optionally update value
+        # Optionally update value (AC3D Bridge pattern: direct value assignment)
+        # IMPORTANT: value must already be in Inventor's internal units (cm-based)
+        # Dashboard handles unit conversion before sending the value
         if value is not None:
-            if param.IsReadOnly:
+            try:
+                # Direct value assignment - Inventor handles the rest
+                param.Value = value
+            except Exception as e:
+                # Value update failed (parameter might have formula/constraints)
+                # But Comment was updated successfully
                 return {
                     "success": False,
-                    "error": f"Parameter '{name}' is read-only (calculated)",
-                    "comment": new_comment  # Comment was updated even if value update failed
+                    "error": f"Failed to update value: {str(e)}",
+                    "comment": new_comment,
+                    "parameter": name,
+                    "mapping": symbol,
+                    "note": note
                 }
-
-            if unit and unit != param.Units:
-                # Inventor handles unit conversion automatically
-                param.Expression = f"{value} {unit}"
-            else:
-                param.Value = value
 
         return {
             "success": True,
