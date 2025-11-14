@@ -8,56 +8,95 @@ def parse_comment_mapping(comment: str) -> Dict[str, Optional[str]]:
     """
     Parse Inventor parameter Comment field for CalcsLive mapping.
 
-    Format: "#AC:symbol #Note:{{user text}}"
+    New Format: "CA0:symbol #note text" or "CA0:symbol"
+    - Namespace: CA0, CA1, etc. (required)
+    - Symbol: MathJS-compatible symbol (required)
+    - Note: Optional text after # (can contain # if wrapped in backticks)
+
+    Examples:
+        "CA0:L" → {"mapping": "L", "note": None}
+        "CA0:L #Length parameter" → {"mapping": "L", "note": "Length parameter"}
+        "CA0:L #`Length #1` #`Design #3`" → {"mapping": "L", "note": "`Length #1` #`Design #3`"}
 
     Args:
         comment: Parameter comment string
 
     Returns:
         Dict with 'mapping' and 'note' keys
-        Example: {"mapping": "flow_rate", "note": "Main pump flow"}
+        Example: {"mapping": "L", "note": "Length parameter"}
     """
     result = {"mapping": None, "note": None}
 
-    if not comment:
+    if not comment or not comment.strip():
         return result
 
-    parts = comment.split()
-    for part in parts:
-        if part.startswith('#AC:'):
-            result["mapping"] = part[4:]  # Extract symbol after #AC:
-        elif part.startswith('#Note:'):
-            # Extract note text, removing {{ and }}
-            note_text = part[6:]  # Remove #Note: prefix
-            result["note"] = note_text.strip('{}')
+    comment = comment.strip()
+
+    # Split on first # to separate namespace:symbol from note
+    if '#' in comment:
+        mapping_part, note_part = comment.split('#', 1)  # maxsplit=1 preserves # in notes
+        result["note"] = note_part.strip() if note_part.strip() else None
+    else:
+        mapping_part = comment
+        result["note"] = None
+
+    # Parse namespace:symbol
+    mapping_part = mapping_part.strip()
+    if ':' not in mapping_part:
+        return {"mapping": None, "note": None}  # Invalid: no namespace
+
+    namespace, symbol = mapping_part.split(':', 1)
+    namespace = namespace.strip()
+    symbol = symbol.strip()
+
+    # Validate namespace (must be CA followed by digit(s))
+    if not namespace.startswith('CA') or len(namespace) < 3:
+        return {"mapping": None, "note": None}
+
+    # Validate namespace has digit after CA
+    try:
+        int(namespace[2:])  # Check CA0, CA1, etc.
+    except ValueError:
+        return {"mapping": None, "note": None}
+
+    # Validate symbol (non-empty, no colons - MathJS compatibility)
+    if not symbol or ':' in symbol:
+        return {"mapping": None, "note": None}
+
+    result["mapping"] = symbol
 
     return result
 
 
-def build_comment_string(symbol: Optional[str], note: Optional[str]) -> str:
+def build_comment_string(symbol: Optional[str], note: Optional[str], namespace: str = "CA0") -> str:
     """
     Build Comment field string with mapping and optional note.
 
+    New Format: "CA0:symbol #note text" or "CA0:symbol"
+
     Args:
-        symbol: CalcsLive PQ symbol (e.g., "flow_rate")
-        note: Optional user note text
+        symbol: CalcsLive PQ symbol (e.g., "L", "rho", "η")
+        note: Optional user note text (preserved as-is)
+        namespace: Namespace prefix (default: "CA0")
 
     Returns:
         Formatted comment string
-        Example: "#AC:flow_rate #Note:{{Main pump flow rate}}"
+        Examples:
+            build_comment_string("L", None) → "CA0:L"
+            build_comment_string("L", "Length parameter") → "CA0:L #Length parameter"
+            build_comment_string("L", "`Length #1` #`Design #3`") → "CA0:L #`Length #1` #`Design #3`"
     """
-    parts = []
+    if not symbol:
+        return ""
 
-    if symbol:
-        parts.append(f"#AC:{symbol}")
+    # Build namespace:symbol part
+    comment = f"{namespace}:{symbol}"
 
-    if note:
-        # Clean note text and wrap in {{ }}
-        clean_note = note.replace('{{', '').replace('}}', '').strip()
-        if clean_note:
-            parts.append(f"#Note:{{{{{clean_note}}}}}")
+    # Append note if provided (preserve as-is, including any # or backticks)
+    if note and note.strip():
+        comment = f"{comment} #{note.strip()}"
 
-    return ' '.join(parts)
+    return comment
 
 
 def get_user_parameters() -> Dict[str, Any]:
