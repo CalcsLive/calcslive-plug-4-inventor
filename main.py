@@ -1,13 +1,10 @@
-# main.py (Enhanced)
+# main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from inventor_api import (
     get_user_parameters,
-    get_fx_parameters,  # Backward compatibility
-    update_fx_parameter,
     update_parameter_mapping,
-    get_mappings,
-    save_mappings
+    create_user_parameter
 )
 import uvicorn
 
@@ -62,34 +59,6 @@ def read_user_parameters():
 
     if not result.get("success"):
         raise HTTPException(status_code=503, detail=result.get("error"))
-
-    return result
-
-@app.post("/inventor/parameters/update")
-def update_parameter_value(data: dict):
-    """
-    Update a User Parameter value (without affecting mapping).
-
-    Request body:
-    {
-        "name": "Length",
-        "value": 150.0,
-        "unit": "mm"  // optional
-    }
-    """
-    name = data.get("name")
-    value = data.get("value")
-    unit = data.get("unit")
-
-    if not name:
-        raise HTTPException(status_code=400, detail="Parameter 'name' is required")
-    if value is None:
-        raise HTTPException(status_code=400, detail="Parameter 'value' is required")
-
-    result = update_fx_parameter(name, value, unit)
-
-    if not result.get("success"):
-        raise HTTPException(status_code=400, detail=result.get("error"))
 
     return result
 
@@ -149,44 +118,32 @@ def remove_parameter_mapping(data: dict):
 
     return result
 
-
-# ====================
-# Legacy Endpoints (Backward Compatibility)
-# ====================
-
-@app.get("/parameters")
-def legacy_read_parameters():
+@app.post("/inventor/parameters/create")
+def create_parameter(data: dict):
     """
-    DEPRECATED: Use /inventor/parameters instead
-    Export all f(x) parameters from active Inventor document
+    Create a new User Parameter in Inventor.
+
+    Request body:
+    {
+        "name": "ArticleId",           // required - parameter name
+        "value": "3MAV4GNFQ-3FU",      // optional - initial value
+        "comment": "eg: 3MAV4GNFQ-3FU, taken from the calculation article url",  // optional
+        "unit": "Text"                 // optional - default "Text" for text parameters
+    }
+
+    Use cases:
+    - Create ArticleId parameter for CalcsLive integration
+    - Create custom text or numeric parameters programmatically
     """
-    result = get_fx_parameters()
+    name = data.get("name")
+    value = data.get("value", "")
+    comment = data.get("comment", "")
+    unit = data.get("unit", "Text")
 
-    if not result.get("success"):
-        raise HTTPException(status_code=503, detail=result.get("error"))
+    if not name:
+        raise HTTPException(status_code=400, detail="Parameter 'name' is required")
 
-    return result
-
-@app.get("/mappings")
-def read_mappings():
-    """
-    DEPRECATED: PropertySets mapping approach (AC3D Bridge uses Comment field now)
-    Get CalcsLive mappings stored in Inventor file custom properties
-    """
-    result = get_mappings()
-
-    if not result.get("success"):
-        raise HTTPException(status_code=503, detail=result.get("error"))
-
-    return result
-
-@app.post("/mappings")
-def write_mappings(data: dict):
-    """
-    DEPRECATED: PropertySets mapping approach (AC3D Bridge uses Comment field now)
-    Save CalcsLive mappings to Inventor file custom properties
-    """
-    result = save_mappings(data)
+    result = create_user_parameter(name, value, comment, unit)
 
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error"))

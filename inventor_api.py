@@ -240,76 +240,6 @@ def get_user_parameters() -> Dict[str, Any]:
         pythoncom.CoUninitialize()
 
 
-# Backward compatibility alias
-def get_fx_parameters() -> Dict[str, Any]:
-    """
-    Backward compatibility wrapper for get_user_parameters().
-
-    DEPRECATED: Use get_user_parameters() instead.
-    This now returns User Parameters only (not all parameters).
-    """
-    return get_user_parameters()
-
-
-def update_fx_parameter(name: str, value: float, unit: str = None) -> Dict[str, Any]:
-    """
-    Update a single f(x) parameter value in active Inventor document.
-
-    Args:
-        name: Parameter name (e.g., "Length", "Width")
-        value: New value to set
-        unit: Optional unit string (if different from parameter's current unit)
-
-    Returns:
-        Dict with success status or error message
-    """
-    pythoncom.CoInitialize()
-    try:
-        app = win32com.client.GetActiveObject("Inventor.Application")
-        doc = app.ActiveDocument
-
-        if doc is None:
-            return {"success": False, "error": "No active Inventor document"}
-
-        params = doc.ComponentDefinition.Parameters
-
-        # Find parameter by name
-        try:
-            param = params.Item(name)
-        except:
-            return {"success": False, "error": f"Parameter '{name}' not found"}
-
-        # Check if parameter is read-only
-        if param.IsReadOnly:
-            return {"success": False, "error": f"Parameter '{name}' is read-only (calculated)"}
-
-        # Update value
-        # Note: Inventor handles unit conversion automatically if value includes unit
-        if unit and unit != param.Units:
-            # Convert value with unit
-            # Inventor's Value property handles this automatically
-            param.Expression = f"{value} {unit}"
-        else:
-            # Direct value assignment
-            param.Value = value
-
-        return {
-            "success": True,
-            "parameter": name,
-            "newValue": param.Value,
-            "unit": param.Units
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "errorType": type(e).__name__
-        }
-    finally:
-        pythoncom.CoUninitialize()
-
-
 def update_parameter_mapping(name: str, symbol: Optional[str] = None, note: Optional[str] = None,
                             value: Optional[float] = None, unit: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -389,69 +319,26 @@ def update_parameter_mapping(name: str, symbol: Optional[str] = None, note: Opti
         pythoncom.CoUninitialize()
 
 
-def get_mappings() -> Dict[str, Any]:
+def create_user_parameter(name: str, value: str = "", comment: str = "", unit: str = "Text") -> Dict[str, Any]:
     """
-    Get CalcsLive mappings stored in Inventor file custom properties.
-
-    Returns:
-        Dict with mappings data or error message
-    """
-    pythoncom.CoInitialize()
-    try:
-        app = win32com.client.GetActiveObject("Inventor.Application")
-        doc = app.ActiveDocument
-
-        if doc is None:
-            return {"success": False, "error": "No active Inventor document"}
-
-        # Access custom property set
-        try:
-            custom_props = doc.PropertySets.Item("Inventor User Defined Properties")
-
-            # Try to get CalcsLiveMappings property
-            try:
-                mappings_json = custom_props.Item("CalcsLiveMappings").Value
-
-                # Parse JSON
-                import json
-                mappings = json.loads(mappings_json)
-
-                return {
-                    "success": True,
-                    "mappings": mappings
-                }
-            except:
-                # Property doesn't exist yet - return empty mappings
-                return {
-                    "success": True,
-                    "mappings": {}
-                }
-
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to access custom properties: {str(e)}"
-            }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "errorType": type(e).__name__
-        }
-    finally:
-        pythoncom.CoUninitialize()
-
-
-def save_mappings(mappings: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Save CalcsLive mappings to Inventor file custom properties.
+    Create a new User Parameter in active Inventor document.
 
     Args:
-        mappings: Dict containing mapping configuration (will be JSON serialized)
+        name: Parameter name (e.g., "ArticleId", "Description")
+        value: Initial value (default: empty string for text parameters)
+        comment: Comment/note for the parameter (e.g., "eg: 3MAV4GNFQ-3FU, taken from the calculation article url")
+        unit: Unit type (default: "Text" for text parameters, or "cm", "mm", etc. for numeric)
 
     Returns:
         Dict with success status or error message
+
+    Example:
+        create_user_parameter(
+            "ArticleId",
+            "3MAV4GNFQ-3FU",
+            "eg: 3MAV4GNFQ-3FU, taken from the calculation article url",
+            "Text"
+        )
     """
     pythoncom.CoInitialize()
     try:
@@ -461,32 +348,54 @@ def save_mappings(mappings: Dict[str, Any]) -> Dict[str, Any]:
         if doc is None:
             return {"success": False, "error": "No active Inventor document"}
 
-        # Convert mappings to JSON string
-        import json
-        mappings_json = json.dumps(mappings, indent=2)
+        # Access User Parameters collection
+        user_params = doc.ComponentDefinition.Parameters.UserParameters
 
-        # Access custom property set
+        # Check if parameter already exists
         try:
-            custom_props = doc.PropertySets.Item("Inventor User Defined Properties")
+            existing_param = user_params.Item(name)
+            return {
+                "success": False,
+                "error": f"User Parameter '{name}' already exists",
+                "existingValue": existing_param.Expression,
+                "existingUnit": existing_param.Units,
+                "existingComment": existing_param.Comment
+            }
+        except:
+            # Parameter doesn't exist - good, we can create it
+            pass
 
-            # Try to update existing property, or create new one
-            try:
-                # Update existing property
-                prop = custom_props.Item("CalcsLiveMappings")
-                prop.Value = mappings_json
-            except:
-                # Create new property
-                custom_props.Add(mappings_json, "CalcsLiveMappings")
+        # Create new User Parameter
+        # Inventor API: UserParameters.AddByExpression(Name, Expression, UnitsType)
+        try:
+            # For text parameters, Inventor uses empty unit type
+            if unit.lower() == "text" or unit == "":
+                # Text parameter - use expression directly with quotes
+                expression = f'"{value}"' if value else '""'
+                new_param = user_params.AddByExpression(name, expression, "")
+            else:
+                # Numeric parameter with units
+                expression = f"{value} {unit}" if value else f"0 {unit}"
+                new_param = user_params.AddByExpression(name, expression, unit)
+
+            # Set comment if provided
+            if comment:
+                new_param.Comment = comment
 
             return {
                 "success": True,
-                "message": "Mappings saved to Inventor file"
+                "parameter": name,
+                "value": new_param.Expression,
+                "unit": new_param.Units,
+                "comment": new_param.Comment,
+                "message": f"User Parameter '{name}' created successfully"
             }
 
-        except Exception as e:
+        except Exception as create_error:
             return {
                 "success": False,
-                "error": f"Failed to save custom properties: {str(e)}"
+                "error": f"Failed to create parameter: {str(create_error)}",
+                "errorType": type(create_error).__name__
             }
 
     except Exception as e:
