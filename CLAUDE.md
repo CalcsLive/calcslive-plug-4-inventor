@@ -23,36 +23,102 @@
 
 ## Architecture Overview
 
-### CalcsLive Plug for Inventor Components
+### CalcsLive Plug for Inventor - System Components
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    Inventor Model (.ipt/.iam)                │
-│              User Parameters with Comment mappings           │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ (COM API via win32com)
-                         ↓
-┌──────────────────────────────────────────────────────────────┐
-│          THIS REPO: CalcsLive-Inventor Bridge                │
-│  - FastAPI server (localhost:8000)                           │
-│  - Comment parsing (CA0:symbol #note)                        │
-│  - Unit handling (Inventor cm ↔ Dashboard)                   │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ (HTTP REST API)
-                         ↓
-┌──────────────────────────────────────────────────────────────┐
-│          MAIN REPO: CalcsLive Plug Dashboard                 │
-│  - Web UI (pages/inventor/dashboard.vue)                     │
-│  - Unit conversion (cm ↔ SI via dimensional analysis)        │
-│  - PQ mapping interface                                      │
-└────────────────────────┬─────────────────────────────────────┘
-                         │ (CalcsLive API)
-                         ↓
-┌──────────────────────────────────────────────────────────────┐
-│              CalcsLive Calculation Platform                  │
-│  - Unit-aware calculation engine                             │
-│  - 67+ engineering unit categories                           │
-└──────────────────────────────────────────────────────────────┘
+╔══════════════════════════════════════════════════════════════╗
+║              AUTODESK INVENTOR (CAD Application)             ║
+║                                                              ║
+║  User Parameters:                                            ║
+║    - Length = 500 mm    Comment: "CA0:L #Beam length"       ║
+║    - Width = 100 mm     Comment: "CA0:W #Beam width"        ║
+║    - Density = 7850 kg/m³  Comment: "CA0:rho #Steel"        ║
+║    - ArticleId = "3MAV4GNFQ-3FU"  (Text parameter)          ║
+║                                                              ║
+║  Internal Storage: cm-based (e.g., 50 cm for 500 mm)        ║
+╚═══════════════════════════╦══════════════════════════════════╝
+                            ║
+                            ║ win32com.client (COM Automation)
+                            ║ - Get/Set UserParameters
+                            ║ - Read/Write Comment fields
+                            ║ - Value/Unit conversions
+                            ║
+                            ▼
+╔══════════════════════════════════════════════════════════════╗
+║         BRIDGE SERVER (THIS REPO - Python/FastAPI)           ║
+║                    localhost:8000/inventor                   ║
+║                                                              ║
+║  Key Endpoints:                                              ║
+║    GET  /inventor/parameters    → Get all user params       ║
+║    POST /inventor/parameters/create → Create text param     ║
+║    POST /inventor/parameters/mapping → Update mapping       ║
+║                                                              ║
+║  Functions (inventor_api.py):                                ║
+║    • parse_comment_mapping()  → Extract "CA0:L #note"       ║
+║    • build_comment_string()   → Build "CA0:L #note"         ║
+║    • get_user_parameters()    → Read all params             ║
+║    • update_parameter_mapping() → Save mapping              ║
+║    • create_user_parameter()  → Create ArticleId etc.       ║
+║                                                              ║
+║  Unit Handling:                                              ║
+║    - Returns internalUnit (e.g., "cm", "g", "rad")          ║
+║    - Returns displayValue in user's chosen unit             ║
+╚═══════════════════════════╦══════════════════════════════════╝
+                            ║
+                            ║ HTTP REST API (JSON)
+                            ║ - Parameter data
+                            ║ - Mapping updates
+                            ║ - ArticleId management
+                            ║
+                            ▼
+╔══════════════════════════════════════════════════════════════╗
+║      WEB DASHBOARD (MAIN REPO - Nuxt 3 / Vue 3)              ║
+║              pages/inventor/dashboard.vue                    ║
+║                                                              ║
+║  Components:                                                 ║
+║    ┌─────────────────┐  ┌──────────────────┐                ║
+║    │ UnifiedParams   │  │ CalculatorTable  │                ║
+║    │ Table           │  │ (CalcsLive PQs)  │                ║
+║    │                 │  │                  │                ║
+║    │ • Inventor      │  │ • PQ symbols     │                ║
+║    │   params        │  │ • Values/units   │                ║
+║    │ • Mappings      │  │ • Expressions    │                ║
+║    │ • Drag-n-drop   │  │                  │                ║
+║    └─────────────────┘  └──────────────────┘                ║
+║                                                              ║
+║  Unit Conversion (Dashboard-side):                          ║
+║    - Inventor cm → CalcsLive SI (m-based)                   ║
+║    - Dimensional analysis: value / (100^L)                  ║
+║    - Uses /api/units/dimension for conversion               ║
+║                                                              ║
+║  Workflow:                                                   ║
+║    1. Load article → Initialize calculator                  ║
+║    2. Drag PQ → Map to Inventor param                       ║
+║    3. Edit values → Update dashboard state                  ║
+║    4. Click "Update 3D Model" → Persist to Inventor         ║
+╚═══════════════════════════╦══════════════════════════════════╝
+                            ║
+                            ║ CalcsLive Internal APIs
+                            ║ - PQ Store (Pinia)
+                            ║ - Calculator Engine
+                            ║ - Units System
+                            ║
+                            ▼
+╔══════════════════════════════════════════════════════════════╗
+║          CALCSLIVE PLATFORM (Core Application)               ║
+║                                                              ║
+║  Features:                                                   ║
+║    • TipTap-based calculation editor                        ║
+║    • 67+ unit categories (length, mass, pressure, etc.)     ║
+║    • Unit conversion system (units_data.json)               ║
+║    • Expression parser (MathJS-based)                       ║
+║    • Dependency graph & live recalculation                  ║
+║    • Greek letter support (η, ρ, α, etc.)                   ║
+║                                                              ║
+║  Storage:                                                    ║
+║    • Supabase (articles, calculations, users)               ║
+║    • Base SI units (m, kg, s, A, K, mol, cd)                ║
+╚══════════════════════════════════════════════════════════════╝
 ```
 
 ## Comment-Based Mapping System

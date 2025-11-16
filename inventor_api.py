@@ -357,6 +357,7 @@ def create_user_parameter(name: str, value: str = "", comment: str = "", unit: s
             return {
                 "success": False,
                 "error": f"User Parameter '{name}' already exists",
+                "parameterExists": True,
                 "existingValue": existing_param.Expression,
                 "existingUnit": existing_param.Units,
                 "existingComment": existing_param.Comment
@@ -366,15 +367,13 @@ def create_user_parameter(name: str, value: str = "", comment: str = "", unit: s
             pass
 
         # Create new User Parameter
-        # Inventor API: UserParameters.AddByExpression(Name, Expression, UnitsType)
         try:
-            # For text parameters, Inventor uses empty unit type
             if unit.lower() == "text" or unit == "":
-                # Text parameter - use expression directly with quotes
-                expression = f'"{value}"' if value else '""'
-                new_param = user_params.AddByExpression(name, expression, "")
+                # Text parameter - use AddByValue with kTextUnits enum
+                # Inventor API documentation: kTextUnits = 11346 (Text/String type)
+                new_param = user_params.AddByValue(name, value or "", 11346)
             else:
-                # Numeric parameter with units
+                # Numeric parameter with units - use AddByExpression
                 expression = f"{value} {unit}" if value else f"0 {unit}"
                 new_param = user_params.AddByExpression(name, expression, unit)
 
@@ -392,10 +391,13 @@ def create_user_parameter(name: str, value: str = "", comment: str = "", unit: s
             }
 
         except Exception as create_error:
+            error_code = getattr(create_error, 'hresult', None)
             return {
                 "success": False,
                 "error": f"Failed to create parameter: {str(create_error)}",
-                "errorType": type(create_error).__name__
+                "errorType": type(create_error).__name__,
+                "errorCode": error_code,
+                "details": "Check parameter name validity and Inventor document state"
             }
 
     except Exception as e:
