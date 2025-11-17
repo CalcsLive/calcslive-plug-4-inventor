@@ -1,8 +1,4 @@
-# CalcsLive Plug for Inventor - Python Bridge
-
-**Status**: ✅ **Production Ready** - Full dashboard integration complete!
-
-**Latest Updates (November 2025)**: Enhanced ArticleId management, mapping deletion, and optimized performance.
+# CalcsLive Plug for Inventor - Bridge Server
 
 Unit-aware calculation integration between Autodesk Inventor User Parameters and CalcsLive calculations platform.
 
