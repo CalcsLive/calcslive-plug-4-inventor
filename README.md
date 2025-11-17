@@ -328,7 +328,7 @@ python main.py
 
 ## Comparison to Similar Projects
 
-### vs. FreeCAD Bridge
+### vs. [FreeCAD Bridge](https://github.com/CalcsLive/calcslive-plug-4-freecad)
 
 | Feature | FreeCAD Bridge | Inventor Bridge |
 |---------|---------------|----------------|
@@ -369,13 +369,13 @@ CalcsLive Plug for Inventor is the spiritual successor to [AC3D Bridge](https://
 
 ## Key Features
 
-✅ **Comment-Based Mapping** - Non-intrusive `CA0:symbol #note` format in Inventor Comment fields
-✅ **ArticleId Persistence** - Models remember their CalcsLive article connection
-✅ **Bidirectional Sync** - Engineering ⟷ Geometry iterative refinement
-✅ **Unit Conversion** - Automatic conversion between Inventor cm-based and CalcsLive SI
-✅ **Formula Detection** - Auto-detects dependent parameters (read-only)
-✅ **Greek Letter Support** - η, ρ, α, etc. in CalcsLive symbols
-✅ **Zero Vendor Lock-In** - Models work with or without CalcsLive Plug
+✅ **Comment-Based Mapping** - Non-intrusive `CA0:symbol #note` format in Inventor Comment fields  
+✅ **ArticleId Persistence** - Models remember their CalcsLive article connection  
+✅ **Bidirectional Sync** - Engineering ⟷ Geometry iterative refinement  
+✅ **Unit Conversion** - Automatic conversion between Inventor cm-based and CalcsLive SI  
+✅ **Formula Detection** - Auto-detects dependent parameters (read-only)  
+✅ **Greek Letter Support** - η, ρ, α, etc. in CalcsLive symbols  
+✅ **Zero Vendor Lock-In** - Models work with or without CalcsLive Plug  
 ✅ **Production Tested** - 23 comprehensive unit tests
 
 ## Documentation
