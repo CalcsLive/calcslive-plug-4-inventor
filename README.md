@@ -402,7 +402,32 @@ pytest test_comment_parser.py -v
 
 ## License
 
-MIT License 
+[MIT License](./LICENSE)
+
+This open-source project provides a local interoperability bridge between Autodesk Inventor and CalcsLive.
+
+### Autodesk Inventor License Requirements
+
+**✅ This bridge requires a valid, licensed installation of Autodesk Inventor to function.**
+
+This software is designed exclusively for **interactive, single-user, desktop use** in compliance with the Autodesk Software License Agreement:
+
+- ✅ **Permitted**: User-initiated actions via the CalcsLive dashboard (drag-and-drop parameter mapping, clicking "Update 3D Model")
+- ✅ **Permitted**: Local bridge server (localhost:8000) connecting your browser to your local Inventor instance
+- ✅ **Permitted**: Single-user desktop workflow where you control when Inventor parameters are read/written
+
+- ❌ **Prohibited**: Server-based execution where multiple users access a single Inventor instance over a network
+- ❌ **Prohibited**: Unattended automation (e.g., batch processing, service bureau, SaaS)
+- ❌ **Prohibited**: Cloud/VPN deployment of this bridge to control remote Inventor installations
+
+**🛑 You (the user) are solely responsible for ensuring your use of Autodesk Inventor complies with your license terms.**
+
+### Trademark & Affiliation Notice
+
+This project is **not affiliated with, endorsed by, or supported by Autodesk, Inc.**
+
+Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trademarks of Autodesk, Inc., and/or its subsidiaries and/or affiliates in the USA and/or other countries. 
+
 
 ## Support & Contributing
 
