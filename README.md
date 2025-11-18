@@ -2,7 +2,7 @@
 
 Unit-aware calculation integration between Autodesk Inventor User Parameters and CalcsLive calculations platform.
 
-![Main Dashboard UI](./assets/images/CalcsLive%20Plug%20for%20Inventor%20Main%20UI-1.png)
+![Main Dashboard UI](assets/images/CalcsLive-Plug-for-Inventor-Main-UI-1.png)
 
 ## What is This?
 
@@ -344,9 +344,9 @@ python main.py
 
 CalcsLive Plug for Inventor is the spiritual successor to [AC3D Bridge](https://v2-docs.donwen.com/ac3d-bridge/help.html) with modern technology:
 
-| Feature | AC3D Bridge (2015) | CalcsLive Plug (2025) |
+| Feature | AC3D Bridge (2024) | CalcsLive Plug (2025) |
 |---------|-------------------|----------------------|
-| **Technology** | .NET WinForms | Python + FastAPI + Vue 3 |
+| **Technology** | .NET WinForms | Python + FastAPI + Web UI |
 | **UI** | Desktop app | Web dashboard |
 | **Calculations** | Embedded XML | Cloud platform |
 | **Persistence** | Custom properties | Comment fields |
@@ -427,7 +427,6 @@ This software is designed exclusively for **interactive, single-user, desktop us
 This project is **not affiliated with, endorsed by, or supported by Autodesk, Inc.**
 
 Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trademarks of Autodesk, Inc., and/or its subsidiaries and/or affiliates in the USA and/or other countries. 
-
 
 ## Support & Contributing
 
