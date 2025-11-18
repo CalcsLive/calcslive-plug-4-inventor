@@ -2,6 +2,8 @@
 
 Unit-aware calculation integration between Autodesk Inventor User Parameters and CalcsLive calculations platform.
 
+![Main Dashboard UI](./assets/images/CalcsLive%20Plug%20for%20Inventor%20Main%20UI-1.png)
+
 ## What is This?
 
 CalcsLive Plug for Inventor is a **two-component system** that supercharges Autodesk Inventor's Parameter Manager (fx) with:
