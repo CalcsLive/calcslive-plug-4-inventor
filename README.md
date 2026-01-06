@@ -13,7 +13,7 @@ CalcsLive Plug for Inventor is a **two-component system** that supercharges Auto
 ✅ **Decoupled Versatile Calculations** - Reusable calculations independent of CAD models  
 ✅ **Comment-Based Mapping** - Non-intrusive, no vendor lock-in
 
-**This repository** is the **Bridge Server** component (Python/FastAPI). See [CalcsLive Plug Dashboard](https://www.calcs.live/inventor/dashboard) for the web interface.
+**This repository** is the **Bridge Server** component (Python/FastAPI). See [CalcsLive Plug Dashboard](https://www.calcslive.com/inventor/dashboard) for the web interface.
 
 ## Architecture
 
@@ -58,7 +58,7 @@ uvicorn main:app --reload --port 8000
 ### 4. Connect CalcsLive Dashboard
 
 **Option A - Use Production Dashboard** (Recommended):
-1. Open [calcs.live/inventor/dashboard](https://www.calcs.live/inventor/dashboard)
+1. Open [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard)
 2. Sign in to CalcsLive account (Free tier or higher)
 3. Dashboard auto-detects Bridge connection
 4. Start mapping parameters via drag-and-drop!
@@ -114,9 +114,18 @@ curl -X POST http://localhost:8000/inventor/parameters/create \
 
 Creates text or numeric parameters. **ArticleId** (text parameter) links Inventor model to CalcsLive article.
 
-**`GET /inventor/status`** - Check Inventor connection
+**`GET /inventor/health`** - Check bridge connection status
 ```bash
-curl http://localhost:8000/inventor/status
+curl http://localhost:8000/inventor/health
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "service": "CalcsLive Plug for Inventor",
+  "version": "1.0.0"
+}
 ```
 
 ## Auto-Generated API Documentation
@@ -243,10 +252,10 @@ taskkill //F //PID <PID>
 If using Brave and seeing `ERR_BLOCKED_BY_CLIENT` or "Failed to fetch" errors:
 
 1. Click **Brave Shields** icon (lion logo) in address bar
-2. Toggle **Shields down for this site** (calcs.live)
+2. Toggle **Shields down for this site** (calcslive.com)
 3. Refresh the page
 
-**Why**: Brave's privacy protection blocks localhost connections by default. Disabling Shields for calcs.live allows dashboard to connect to your local Bridge (localhost:8000).
+**Why**: Brave's privacy protection blocks localhost connections by default. Disabling Shields for calcslive.com allows dashboard to connect to your local Bridge (localhost:8000).
 
 **Alternative**: Use Chrome, Edge, or Firefox - these browsers allow localhost connections from HTTPS sites without additional configuration.
 
@@ -378,11 +387,11 @@ CalcsLive Plug for Inventor is the spiritual successor to [AC3D Bridge](https://
 
 ## Documentation
 
-- **User Guide**: [calcs.live/help/inventor-integration](https://www.calcs.live/help/inventor-integration) 
+- **User Guide**: [calcslive.com/help/inventor-integration](https://www.calcslive.com/help/inventor-integration)
 
 ## Related Projects
 
-- **CalcsLive Platform**: [calcs.live](https://www.calcs.live) 
+- **CalcsLive Platform**: [calcslive.com](https://www.calcslive.com) 
 - **CalcsLive Plug for FreeCAD**: Similar bridge for FreeCAD VarSet integration
 - **AC3D Bridge** (predecessor): [v2-docs.donwen.com/ac3d-bridge](https://v2-docs.donwen.com/ac3d-bridge/help.html) 
 
@@ -440,6 +449,6 @@ Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trade
 
 ---
 
-**Last Updated**: November 16, 2025  
-**Status**: ✅ **Production Ready** - Enhanced with ArticleId management, mapping deletion, and optimized performance  
-**Dashboard**: [calcs.live/inventor/dashboard](https://www.calcs.live/inventor/dashboard)
+**Last Updated**: January 6, 2026
+**Status**: ✅ **Production Ready** - Multi-domain support, enhanced CORS, ArticleId management
+**Dashboard**: [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard)

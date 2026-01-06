@@ -20,7 +20,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://calcs.live",
-        "https://www.calcs.live"
+        "https://www.calcs.live",
+        "https://calcslive.com",
+        "https://www.calcslive.com"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
