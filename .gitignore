@@ -69,4 +69,5 @@ dist/
 # Personal development folder (not for public repo)
 .e3d/
 models/OldVersions/
+models/private/
 CLAUDE.md
