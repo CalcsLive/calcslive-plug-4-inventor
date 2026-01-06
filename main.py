@@ -11,7 +11,7 @@ import uvicorn
 app = FastAPI(
     title="CalcsLive Plug for Inventor",
     description="HTTP bridge for Inventor User Parameters with CalcsLive integration",
-    version="1.0.0"
+    version="1.1.1"
 )
 
 # CORS for CalcsLive dashboard
