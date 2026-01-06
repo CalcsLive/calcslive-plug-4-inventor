@@ -1,0 +1,27 @@
+[project]
+name = "calcslive-plug-inventor"
+version = "1.1.1"
+description = "HTTP bridge for Inventor User Parameters with CalcsLive integration"
+authors = [
+    {name = "CalcsLive", email = "support@calcslive.com"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.22.0",
+    "pywin32>=306",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
+py-modules = ["main", "inventor_api"]

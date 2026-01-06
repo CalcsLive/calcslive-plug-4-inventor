@@ -8,10 +8,20 @@ from inventor_api import (
 )
 import uvicorn
 
+# Read version from pyproject.toml
+def get_version():
+    try:
+        import toml
+        with open("pyproject.toml", "r") as f:
+            data = toml.load(f)
+            return data["project"]["version"]
+    except:
+        return "1.1.1"  # Fallback version
+
 app = FastAPI(
     title="CalcsLive Plug for Inventor",
     description="HTTP bridge for Inventor User Parameters with CalcsLive integration",
-    version="1.1.1"
+    version=get_version()
 )
 
 # CORS for CalcsLive dashboard
@@ -31,12 +41,12 @@ app.add_middleware(
 @app.get("/")
 def root():
     """Health check endpoint"""
-    return {"status": "ok", "service": "CalcsLive Plug for Inventor"}
+    return {"status": "ok", "service": "CalcsLive Plug for Inventor", "version": get_version()}
 
 @app.get("/inventor/health")
 def health_check():
     """Health check for Inventor-specific endpoints"""
-    return {"status": "ok", "service": "CalcsLive Plug for Inventor", "version": "1.0.0"}
+    return {"status": "ok", "service": "CalcsLive Plug for Inventor", "version": get_version()}
 
 @app.get("/inventor/document")
 def get_document_info():

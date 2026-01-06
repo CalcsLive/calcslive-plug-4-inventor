@@ -1,3 +1,4 @@
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 pywin32>=306
+toml>=0.10.2
