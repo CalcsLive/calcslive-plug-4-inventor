@@ -1,6 +1,6 @@
 [project]
 name = "calcslive-plug-inventor"
-version = "1.1.2"
+version = "1.1.4"
 description = "HTTP bridge for Inventor User Parameters with CalcsLive integration"
 readme = "README.md"
 requires-python = ">=3.8"

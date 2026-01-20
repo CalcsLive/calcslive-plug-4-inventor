@@ -17,9 +17,9 @@ Unit-aware calculation integration between Autodesk Inventor User Parameters and
 
 CalcsLive Plug for Inventor is a **two-component system** that supercharges Autodesk Inventor's Parameter Manager (fx) with:
 
-✅ **67+ Engineering Unit Categories** - Mechanical, thermal, electrical, fluid, civil disciplines
-✅ **Bidirectional Engineering-Driven Modeling** - Engineering ⟷ Geometry iterative refinement
-✅ **Decoupled Versatile Calculations** - Reusable calculations independent of CAD models
+✅ **67+ Engineering Unit Categories** - Mechanical, thermal, electrical, fluid, civil disciplines  
+✅ **Bidirectional Engineering-Driven Modeling** - Engineering ⟷ Geometry iterative refinement  
+✅ **Decoupled Versatile Calculations** - Reusable calculations independent of CAD models  
 ✅ **Comment-Based Mapping** - Non-intrusive, no vendor lock-in
 
 **This repository** is the **Bridge Server** component (Python/FastAPI). See [CalcsLive Plug Dashboard](https://www.calcslive.com/inventor/dashboard) for the web interface.
@@ -490,20 +490,20 @@ CalcsLive Plug for Inventor is the spiritual successor to [AC3D Bridge](https://
 
 ### Paradigm-Shifting Capabilities
 
-✅ **Engineering-Driven Design (EDD)** - Engineering calculations drive geometry, not just document it
-✅ **Parametric Beyond Geometry** - Track any engineering quantity (stress, flow, efficiency, cost) alongside geometry
-✅ **Bidirectional Sync** - Engineering ⟷ Geometry iterative refinement workflow
-✅ **67+ Engineering Disciplines** - Mechanical, thermal, electrical, fluid, structural, civil parameters
+✅ **Engineering-Driven Design (EDD)** - Engineering calculations drive geometry, not just document it  
+✅ **Parametric Beyond Geometry** - Track any engineering quantity (stress, flow, efficiency, cost) alongside geometry  
+✅ **Bidirectional Sync** - Engineering ⟷ Geometry iterative refinement workflow  
+✅ **67+ Engineering Disciplines** - Mechanical, thermal, electrical, fluid, structural, civil parameters  
 ✅ **Seamless Native Integration** - Pure add-on that works alongside Inventor's native parameters and iLogic, while dramatically simplifying complex calculations you used to struggle with in iLogic or Excel
 
 ### Technical Implementation
 
-✅ **Comment-Based Mapping** - Non-intrusive `CA0:symbol #note` format in Inventor Comment fields
-✅ **ArticleId Persistence** - Models remember their CalcsLive article connection
-✅ **Unit Conversion** - Automatic conversion between Inventor cm-based and CalcsLive SI
-✅ **Formula Detection** - Auto-detects dependent parameters (read-only)
-✅ **Greek Letter Support** - η, ρ, α, etc. in CalcsLive symbols
-✅ **Zero Vendor Lock-In** - Models work with or without CalcsLive Plug
+✅ **Comment-Based Mapping** - Non-intrusive `CA0:symbol #note` format in Inventor Comment fields  
+✅ **ArticleId Persistence** - Models remember their CalcsLive article connection  
+✅ **Unit Conversion** - Automatic conversion between Inventor cm-based and CalcsLive unified system  
+✅ **Formula Detection** - Auto-detects dependent parameters (read-only)  
+✅ **Greek Letter Support** - η, ρ, α, etc. in CalcsLive symbols  
+✅ **Zero Vendor Lock-In** - Models work with or without CalcsLive Plug  
 ✅ **Production Tested** - 23 comprehensive unit tests
 
 ## Documentation
@@ -570,6 +570,6 @@ Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trade
 
 ---
 
-**Last Updated**: January 6, 2026  
+**Last Updated**: January 20, 2026  
 **Status**: ✅ **Production Ready** - Multi-domain support, enhanced CORS, ArticleId management  
 **Dashboard**: [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard)
