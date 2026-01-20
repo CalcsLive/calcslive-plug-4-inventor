@@ -29,8 +29,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://calcs.live",
-        "https://www.calcs.live",
+        "https://calcslive.com",
+        "https://www.calcslive.com",
         "https://calcslive.com",
         "https://www.calcslive.com"
     ],

@@ -264,8 +264,8 @@ If using Brave and seeing `ERR_BLOCKED_BY_CLIENT` or "Failed to fetch" errors:
 Bridge is pre-configured for production use with:
 ```python
 allow_origins=[
-    "https://calcs.live",
-    "https://www.calcs.live",
+    "https://calcslive.com",
+    "https://www.calcslive.com",
     "http://localhost:3000",  # Development
 ]
 ```
@@ -441,7 +441,7 @@ Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trade
 
 **Issues & Support**:
 - Report bugs: [GitHub Issues](https://github.com/CalcsLive/calcslive-plug-4-inventor/issues)
-- Email: don.wen@calcs.live
+- Email: don.wen@calcslive.com
 
 **Contributing**:
 - Pull requests welcome! 
