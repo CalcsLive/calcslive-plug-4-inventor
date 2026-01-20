@@ -4,16 +4,128 @@ Unit-aware calculation integration between Autodesk Inventor User Parameters and
 
 ![Main Dashboard UI](assets/images/CalcsLive-Plug-for-Inventor-Main-UI-1.png)
 
+## Part of CalcsLive Plug Ecosystem
+
+**CalcsLive** ([www.calcslive.com](https://www.calcslive.com)) provides unit-aware calculations at both **physical quantity** and **calculation** levels. The **CalcsLive Plug series** extends this unit awareness to other engineering systems:
+
+- 🔌 **n8n Integration** - Workflow automation with engineering calculations
+- 📊 **Google Sheets Integration** - Spreadsheet formulas with unit conversion
+- 🛠️ **FreeCAD Integration** - Open-source CAD with VarSet parameter mapping
+- 🏗️ **Inventor Integration** - Professional CAD with Engineering-Driven Design (this project)
+
 ## What is This?
 
 CalcsLive Plug for Inventor is a **two-component system** that supercharges Autodesk Inventor's Parameter Manager (fx) with:
 
-✅ **67+ Engineering Unit Categories** - Mechanical, thermal, electrical, fluid, civil disciplines  
-✅ **Bidirectional Engineering-Driven Modeling** - Engineering ⟷ Geometry iterative refinement  
-✅ **Decoupled Versatile Calculations** - Reusable calculations independent of CAD models  
+✅ **67+ Engineering Unit Categories** - Mechanical, thermal, electrical, fluid, civil disciplines
+✅ **Bidirectional Engineering-Driven Modeling** - Engineering ⟷ Geometry iterative refinement
+✅ **Decoupled Versatile Calculations** - Reusable calculations independent of CAD models
 ✅ **Comment-Based Mapping** - Non-intrusive, no vendor lock-in
 
 **This repository** is the **Bridge Server** component (Python/FastAPI). See [CalcsLive Plug Dashboard](https://www.calcslive.com/inventor/dashboard) for the web interface.
+
+## Paradigm Shifts for Inventor Users
+
+### 1. Engineering-Driven Design (EDD)
+
+Traditional CAD workflow: **Geometry → Parameters**
+CalcsLive Plug workflow: **Engineering ⟷ Geometry** (bidirectional)
+
+**What This Means**:
+- Start with engineering calculations (structural, thermal, fluid, etc.)
+- Push engineering results to Inventor parameters
+- Update geometry based on engineering constraints
+- Iterate: geometry changes feed back to engineering analysis
+- **Engineering drives design decisions, not just documents them**
+
+**Example - Beam Design**:
+```
+Engineering Side (CalcsLive):          CAD Side (Inventor):
+- Material strength calculations   →   - Beam cross-section dimensions
+- Load analysis results           →   - Support placement geometry
+- Safety factor verification      →   - Assembly constraints
+                                  ←   - Actual dimensions from model
+- Re-analyze with real geometry   →   - Update design based on results
+```
+
+### 2. Parametric Beyond Geometry
+
+Traditional Inventor parameters: **Geometry-centric** (lengths, angles, patterns)
+CalcsLive Plug parameters: **Any engineering quantity** (stress, flow rate, efficiency, cost)
+
+**What This Means**:
+- Track **thermal properties** (heat transfer coefficients, temperatures)
+- Calculate **fluid dynamics** (flow rates, pressure drops, Reynolds numbers)
+- Monitor **electrical parameters** (voltage, current, power dissipation)
+- Evaluate **structural analysis** (stress, strain, safety factors)
+- Assess **project economics** (material costs, weight, manufacturing time)
+
+**The Difference**:
+| Traditional Inventor | CalcsLive Plug for Inventor |
+|---------------------|----------------------------|
+| Length = 500 mm | Length = 500 mm **AND** Stress = 150 MPa |
+| Width = 100 mm | Width = 100 mm **AND** Deflection = 2.5 mm |
+| Geometry-only | Geometry + Physics + Economics |
+| Document constraints | **Drive design decisions** |
+
+**All with full unit awareness** - CalcsLive handles conversions across 67+ engineering unit categories automatically.
+
+### 3. Simplify What Used to Be Hard
+
+**The Old Way** - iLogic scripting or Excel calculations with manual unit conversions:
+
+**iLogic Example** (complex, error-prone):
+```vb
+' Calculate pressure drop with manual unit handling
+diameter_mm = UserParameters.Item("Diameter").Value
+velocity_mps = UserParameters.Item("Velocity").Value
+' Convert mm to m
+diameter_m = diameter_mm / 1000
+' Calculate Reynolds number
+Re = (velocity_mps * diameter_m) / kinematic_viscosity
+' Friction factor (Colebrook equation - requires iteration!)
+' ...dozens of lines of code...
+' Convert result back to desired units
+pressure_drop_psi = pressure_drop_pa / 6894.76
+UserParameters.Item("PressureDrop").Value = pressure_drop_psi
+```
+
+**Excel Workaround** (disconnected from model):
+- Export parameters to Excel spreadsheet
+- Manually copy/paste values
+- Fight with unit conversions in formulas
+- Copy results back to Inventor
+- Hope you didn't make a mistake
+- Redo everything when design changes
+
+**The CalcsLive Way** (simple, automatic):
+```
+Just drag and drop:
+  Inventor "Diameter" → CalcsLive "D"
+  Inventor "Velocity" → CalcsLive "v"
+
+CalcsLive automatically:
+  ✅ Converts mm → m (or any unit)
+  ✅ Calculates Reynolds number
+  ✅ Solves Colebrook equation
+  ✅ Computes pressure drop
+  ✅ Converts back to your preferred units
+
+Click "Update 3D Model" → Done!
+```
+
+**What CalcsLive Simplifies**:
+- 🎯 **Unit conversions** - No more manual factor tracking (inches ↔ mm, psi ↔ MPa, °F ↔ °C)
+- 🎯 **Complex equations** - Iterative solutions, implicit equations, multi-variable systems
+- 🎯 **Material properties** - Built-in databases with temperature-dependent values
+- 🎯 **Engineering standards** - ASME, AISC, API calculations pre-built and validated
+- 🎯 **Documentation** - Calculations self-document with symbols, notes, and units
+
+**Your Workflow, Enhanced**:
+- ✅ All native Inventor features work unchanged (parameters, formulas, constraints, iLogic)
+- ✅ Use as much or as little as you want (map only parameters needing engineering calculations)
+- ✅ Models work with or without CalcsLive (remove the Plug anytime, models continue normally)
+- ✅ iLogic compatibility - CalcsLive parameters integrate seamlessly with existing iLogic rules
 
 ## Architecture
 
@@ -376,13 +488,22 @@ CalcsLive Plug for Inventor is the spiritual successor to [AC3D Bridge](https://
 
 ## Key Features
 
-✅ **Comment-Based Mapping** - Non-intrusive `CA0:symbol #note` format in Inventor Comment fields  
-✅ **ArticleId Persistence** - Models remember their CalcsLive article connection  
-✅ **Bidirectional Sync** - Engineering ⟷ Geometry iterative refinement  
-✅ **Unit Conversion** - Automatic conversion between Inventor cm-based and CalcsLive SI  
-✅ **Formula Detection** - Auto-detects dependent parameters (read-only)  
-✅ **Greek Letter Support** - η, ρ, α, etc. in CalcsLive symbols  
-✅ **Zero Vendor Lock-In** - Models work with or without CalcsLive Plug  
+### Paradigm-Shifting Capabilities
+
+✅ **Engineering-Driven Design (EDD)** - Engineering calculations drive geometry, not just document it
+✅ **Parametric Beyond Geometry** - Track any engineering quantity (stress, flow, efficiency, cost) alongside geometry
+✅ **Bidirectional Sync** - Engineering ⟷ Geometry iterative refinement workflow
+✅ **67+ Engineering Disciplines** - Mechanical, thermal, electrical, fluid, structural, civil parameters
+✅ **Seamless Native Integration** - Pure add-on that works alongside Inventor's native parameters and iLogic, while dramatically simplifying complex calculations you used to struggle with in iLogic or Excel
+
+### Technical Implementation
+
+✅ **Comment-Based Mapping** - Non-intrusive `CA0:symbol #note` format in Inventor Comment fields
+✅ **ArticleId Persistence** - Models remember their CalcsLive article connection
+✅ **Unit Conversion** - Automatic conversion between Inventor cm-based and CalcsLive SI
+✅ **Formula Detection** - Auto-detects dependent parameters (read-only)
+✅ **Greek Letter Support** - η, ρ, α, etc. in CalcsLive symbols
+✅ **Zero Vendor Lock-In** - Models work with or without CalcsLive Plug
 ✅ **Production Tested** - 23 comprehensive unit tests
 
 ## Documentation
