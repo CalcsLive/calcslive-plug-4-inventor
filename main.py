@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from inventor_api import (
     get_user_parameters,
     update_parameter_mapping,
-    create_user_parameter
+    create_user_parameter,
+    convert_units
 )
 import uvicorn
 
@@ -156,6 +157,51 @@ def create_parameter(data: dict):
         raise HTTPException(status_code=400, detail="Parameter 'name' is required")
 
     result = create_user_parameter(name, value, comment, unit)
+
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error"))
+
+    return result
+
+
+@app.post("/inventor/convert")
+def convert_unit_value(data: dict):
+    """
+    Convert a value between units using Inventor's UnitsOfMeasure API.
+
+    This leverages Inventor's robust unit conversion which handles:
+    - Standard conversions (mm ↔ in, kg ↔ lb, etc.)
+    - Temperature with proper offsets (°C ↔ °F ↔ K)
+    - Complex derived units (kg/m³, N·m, etc.)
+
+    Request body:
+    {
+        "value": 609.6,      // required - numeric value to convert
+        "fromUnit": "mm",    // required - source unit
+        "toUnit": "in"       // required - target unit
+    }
+
+    Returns:
+    {
+        "success": true,
+        "value": 24.0,       // converted value
+        "fromUnit": "mm",
+        "toUnit": "in",
+        "originalValue": 609.6
+    }
+    """
+    value = data.get("value")
+    from_unit = data.get("fromUnit")
+    to_unit = data.get("toUnit")
+
+    if value is None:
+        raise HTTPException(status_code=400, detail="'value' is required")
+    if not from_unit:
+        raise HTTPException(status_code=400, detail="'fromUnit' is required")
+    if not to_unit:
+        raise HTTPException(status_code=400, detail="'toUnit' is required")
+
+    result = convert_units(value, from_unit, to_unit)
 
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error"))

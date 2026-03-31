@@ -240,6 +240,32 @@ Response:
 }
 ```
 
+**`POST /inventor/convert`** - Convert value between units using Inventor's API
+```bash
+curl -X POST http://localhost:8000/inventor/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "value": 609.6,
+    "fromUnit": "mm",
+    "toUnit": "in"
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "value": 24.0,
+  "fromUnit": "mm",
+  "toUnit": "in",
+  "originalValue": 609.6
+}
+```
+
+This endpoint leverages Inventor's robust `UnitsOfMeasure.ConvertUnits()` API for accurate conversions, especially important for preserving user's preferred input units (e.g., user types "24 in" when display unit is "mm").
+
+**⚠️ Temperature Note**: Inventor's `ConvertUnits()` API does **not support temperature units** (°C, °F, K). This showcases a key benefit of CalcsLive Plug for Inventor: **CalcsLive handles the complex thermodynamics calculations** (heat transfer, thermal expansion, energy balance with proper °C↔°F↔K conversions), then provides Inventor with the **geometric results it can handle** (lengths, volumes, material properties at specific temperatures). Users create versatile engineering calculations in CalcsLive that go beyond Inventor's native capabilities.
+
 ## Auto-Generated API Documentation
 
 FastAPI provides automatic interactive documentation:
@@ -254,8 +280,11 @@ calcslive-plug-4-inventor/
 ├── main.py              # FastAPI HTTP server
 ├── inventor_api.py      # Inventor COM API wrapper
 ├── requirements.txt     # Python dependencies
+├── pyproject.toml       # Project metadata and version
 ├── .gitignore           # Git ignore patterns
-└── README.md            # This file
+├── README.md            # This file
+└── tests/
+    └── api.test.http    # REST Client API test file
 ```
 
 ## How It Works
@@ -404,9 +433,23 @@ import pdb; pdb.set_trace()
 python main.py
 ```
 
-## Recent Updates (November 2025)
+## Recent Updates (March 2026)
 
-### ✅ Enhanced Features
+### ✅ Unit Conversion Endpoint
+
+**`POST /inventor/convert` Endpoint**:
+- New endpoint for converting values between units using Inventor's `UnitsOfMeasure.ConvertUnits()` API
+- Handles complex derived units (kg/m³, N·m, etc.) correctly
+- Returns converted value with original for verification
+- **Note**: Temperature conversions (°C, °F, K) not supported by Inventor's API — use CalcsLive for thermodynamics calculations
+
+**User Unit Preservation (userUnit/userValue)**:
+- Bridge now extracts user-typed unit from expressions (e.g., "24 in" when display is "mm")
+- `userValue` and `userUnit` fields indicate input vs calculated parameters
+- Dashboard preserves user's preferred unit when syncing values
+- If `userValue` is `null` → calculated/formula parameter; otherwise → input parameter
+
+### Previous Updates (November 2025)
 
 **ArticleId Text Parameter Creation**:
 - Fixed COM error with correct `kTextUnits = 11346` enum value
@@ -570,6 +613,6 @@ Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trade
 
 ---
 
-**Last Updated**: January 20, 2026  
-**Status**: ✅ **Production Ready** - Multi-domain support, enhanced CORS, ArticleId management  
+**Last Updated**: March 30, 2026
+**Status**: ✅ **Production Ready** - Unit conversion endpoint, userUnit preservation, enhanced sync
 **Dashboard**: [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard)

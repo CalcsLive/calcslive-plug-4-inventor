@@ -99,6 +99,66 @@ def build_comment_string(symbol: Optional[str], note: Optional[str], namespace: 
     return comment
 
 
+import re
+
+def parse_expression_user_input(expression: str) -> Dict[str, Any]:
+    """
+    Parse an Inventor expression to extract user-specified value and unit.
+
+    Inventor expressions can be:
+    - Simple input: "24 in", "609.6 mm", "8 deg", "-45.5 rad"
+    - Calculated: "Length * 2", "Width + 10 mm", "d0 / 2"
+
+    For simple inputs (value + unit pattern), extracts:
+    - userValue: The numeric value the user typed
+    - userUnit: The unit the user specified
+
+    For calculated expressions, returns None for both (formula-driven).
+
+    Args:
+        expression: Inventor parameter expression string
+
+    Returns:
+        Dict with 'userValue' and 'userUnit' keys
+        - Input param: {"userValue": 24.0, "userUnit": "in"}
+        - Calculated: {"userValue": None, "userUnit": None}
+
+    Examples:
+        "24 in" → {"userValue": 24.0, "userUnit": "in"}
+        "609.6 mm" → {"userValue": 609.6, "userUnit": "mm"}
+        "-8.5 deg" → {"userValue": -8.5, "userUnit": "deg"}
+        "1.5e3 m" → {"userValue": 1500.0, "userUnit": "m"}
+        "Length * 2" → {"userValue": None, "userUnit": None}
+        "d0 / 2" → {"userValue": None, "userUnit": None}
+    """
+    result = {"userValue": None, "userUnit": None}
+
+    if not expression or not isinstance(expression, str):
+        return result
+
+    trimmed = expression.strip()
+    if not trimmed:
+        return result
+
+    # Pattern: number (with optional decimals, exponents, negative sign) followed by space(s) and unit
+    # The unit should be a simple identifier (letters, possibly with special chars like ° or ³)
+    # Examples: "24 in", "609.6 mm", "1.5e3 m", "-45 deg", "100 °C"
+    pattern = r'^(-?[\d.]+(?:e[+-]?\d+)?)\s+([a-zA-Z°³²⁻¹/·\-]+)$'
+    match = re.match(pattern, trimmed, re.IGNORECASE)
+
+    if match:
+        try:
+            value = float(match.group(1))
+            unit = match.group(2).strip()
+            result["userValue"] = value
+            result["userUnit"] = unit
+        except ValueError:
+            # Parsing failed, leave as None
+            pass
+
+    return result
+
+
 def get_user_parameters() -> Dict[str, Any]:
     """
     Get User Parameters ONLY from active Inventor document.
@@ -176,6 +236,7 @@ def get_user_parameters() -> Dict[str, Any]:
                             param_expression,
                             param_unit
                         )
+                        print(f"DEBUG [{param_name}]: GetDatabaseUnitsFromExpression('{param_expression}', '{param_unit}') = '{internal_unit}'")
                     elif param_unit:
                         # For parameters without expression, infer from unit
                         # Use empty expression to get default database unit for this unit type
@@ -183,8 +244,12 @@ def get_user_parameters() -> Dict[str, Any]:
                             "",
                             param_unit
                         )
+                        print(f"DEBUG [{param_name}]: GetDatabaseUnitsFromExpression('', '{param_unit}') = '{internal_unit}'")
+                    else:
+                        print(f"DEBUG [{param_name}]: No expression or unit, skipping internal unit lookup")
                 except Exception as unit_error:
                     print(f"WARNING: Could not get internal unit for '{param_name}': {unit_error}")
+                    print(f"DEBUG [{param_name}]: expression='{param_expression}', unit='{param_unit}', value={param_value}")
                     internal_unit = ""
 
                 # Get display value using Inventor's unit conversion
@@ -196,6 +261,7 @@ def get_user_parameters() -> Dict[str, Any]:
                             internal_unit,  # From internal unit (e.g., "cm", "g", "rad")
                             param_unit  # To display unit (e.g., "mm", "kg", "deg")
                         )
+                        print(f"DEBUG [{param_name}]: ConvertUnits({param_value}, '{internal_unit}', '{param_unit}') = {display_value}")
                     except Exception as conv_error:
                         # Conversion failed - use raw value as fallback
                         display_value = param_value
@@ -203,20 +269,38 @@ def get_user_parameters() -> Dict[str, Any]:
                 else:
                     # No units or missing info - use raw value
                     display_value = param_value
+                    print(f"DEBUG [{param_name}]: No conversion needed/possible - using raw value {param_value} (internal_unit='{internal_unit}', param_unit='{param_unit}')")
 
                 # Parse Comment field for mapping
                 comment_data = parse_comment_mapping(param_comment)
+
+                # Parse expression for userValue and userUnit
+                # If userValue exists → input param; if None → calculated/formula param
+                user_input_data = parse_expression_user_input(param_expression)
+
+                # Debug summary for angle parameters (deg, rad, °)
+                if param_unit and ('deg' in param_unit.lower() or 'rad' in param_unit.lower() or '°' in param_unit):
+                    print(f"DEBUG ANGLE SUMMARY [{param_name}]:")
+                    print(f"  - value (internal): {param_value}")
+                    print(f"  - displayValue: {display_value}")
+                    print(f"  - unit (display): {param_unit}")
+                    print(f"  - internalUnit: '{internal_unit}'")
+                    print(f"  - expression: '{param_expression}'")
+                    print(f"  - userValue: {user_input_data['userValue']}")
+                    print(f"  - userUnit: {user_input_data['userUnit']}")
 
                 result.append({
                     "name": param_name,
                     "value": param_value,  # Inventor internal/database units
                     "displayValue": display_value,  # Value in display unit (from Inventor)
                     "unit": param_unit,  # Display unit (e.g., "mm", "in")
-                    "internalUnit": internal_unit,  # Internal unit (empty - inferred by dashboard)
+                    "internalUnit": internal_unit,  # Internal unit (e.g., "cm", "rad")
                     "expression": param_expression,
                     "comment": param_comment,
                     "mapping": comment_data["mapping"],
-                    "note": comment_data["note"]
+                    "note": comment_data["note"],
+                    "userValue": user_input_data["userValue"],  # User-typed value (None if calculated)
+                    "userUnit": user_input_data["userUnit"]  # User-typed unit (None if calculated)
                 })
 
             except Exception as param_error:
@@ -280,13 +364,21 @@ def update_parameter_mapping(name: str, symbol: Optional[str] = None, note: Opti
         new_comment = build_comment_string(symbol, note)
         param.Comment = new_comment
 
-        # Optionally update value (AC3D Bridge pattern: direct value assignment)
-        # IMPORTANT: value must already be in Inventor's internal units (cm-based)
-        # Dashboard handles unit conversion before sending the value
+        # Optionally update value
+        # ROBUST APPROACH: If unit is provided, use Expression (e.g., "8 deg")
+        # This lets Inventor handle conversion to internal units for ALL unit types
         if value is not None:
             try:
-                # Direct value assignment - Inventor handles the rest
-                param.Value = value
+                if unit and unit.strip() and unit.lower() != 'ul':
+                    # Use expression with unit - Inventor handles internal conversion
+                    # Works for all unit types: mm, deg, kg/m³, N·m, etc.
+                    expression = f"{value} {unit}"
+                    param.Expression = expression
+                    print(f"DEBUG [update_parameter_mapping] {name}: Set Expression = '{expression}'")
+                else:
+                    # Unitless - direct value assignment
+                    param.Value = value
+                    print(f"DEBUG [update_parameter_mapping] {name}: Set Value = {value} (unitless)")
             except Exception as e:
                 # Value update failed (parameter might have formula/constraints)
                 # But Comment was updated successfully
@@ -398,6 +490,69 @@ def create_user_parameter(name: str, value: str = "", comment: str = "", unit: s
                 "errorType": type(create_error).__name__,
                 "errorCode": error_code,
                 "details": "Check parameter name validity and Inventor document state"
+            }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "errorType": type(e).__name__
+        }
+    finally:
+        pythoncom.CoUninitialize()
+
+
+def convert_units(value: float, from_unit: str, to_unit: str) -> Dict[str, Any]:
+    """
+    Convert a value between units using Inventor's UnitsOfMeasure API.
+
+    This leverages Inventor's robust unit conversion system which handles:
+    - Standard unit conversions (mm ↔ in, kg ↔ lb, etc.)
+    - Temperature conversions with proper offsets (°C ↔ °F ↔ K)
+    - Complex derived units (kg/m³, N·m, etc.)
+
+    Args:
+        value: Numeric value to convert
+        from_unit: Source unit (e.g., "cm", "rad", "deg")
+        to_unit: Target unit (e.g., "in", "deg", "rad")
+
+    Returns:
+        Dict with converted value or error message
+
+    Example:
+        convert_units(60.96, "cm", "in") → {"success": True, "value": 24.0, ...}
+        convert_units(0.139626, "rad", "deg") → {"success": True, "value": 8.0, ...}
+    """
+    pythoncom.CoInitialize()
+    try:
+        app = win32com.client.GetActiveObject("Inventor.Application")
+        doc = app.ActiveDocument
+
+        if doc is None:
+            return {"success": False, "error": "No active Inventor document"}
+
+        # Use Inventor's UnitsOfMeasure for conversion
+        uom = doc.UnitsOfMeasure
+
+        try:
+            converted_value = uom.ConvertUnits(value, from_unit, to_unit)
+            print(f"DEBUG [convert_units]: ConvertUnits({value}, '{from_unit}', '{to_unit}') = {converted_value}")
+
+            return {
+                "success": True,
+                "value": converted_value,
+                "fromUnit": from_unit,
+                "toUnit": to_unit,
+                "originalValue": value
+            }
+        except Exception as conv_error:
+            print(f"ERROR [convert_units]: ConvertUnits({value}, '{from_unit}', '{to_unit}') failed: {conv_error}")
+            return {
+                "success": False,
+                "error": f"Conversion failed: {str(conv_error)}",
+                "fromUnit": from_unit,
+                "toUnit": to_unit,
+                "originalValue": value
             }
 
     except Exception as e:
