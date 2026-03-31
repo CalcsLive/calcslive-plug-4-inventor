@@ -1,14 +1,12 @@
 """
-Test cases for new comment parser (CA0:symbol #note format)
+Test cases for comment parser (CA0:symbol #note format)
+Run with: pytest test_comment_parser.py -v
 """
-import sys
-import io
+import pytest
 
-# Set UTF-8 encoding for Windows console
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def parse_comment_mapping(comment: str):
-    """Copy of the new parser for testing"""
+    """Copy of the parser from inventor_api.py for testing"""
     result = {"mapping": None, "note": None}
 
     if not comment or not comment.strip():
@@ -53,7 +51,7 @@ def parse_comment_mapping(comment: str):
 
 
 def build_comment_string(symbol, note=None, namespace="CA0"):
-    """Copy of the new builder for testing"""
+    """Copy of the builder from inventor_api.py for testing"""
     if not symbol:
         return ""
 
@@ -67,97 +65,127 @@ def build_comment_string(symbol, note=None, namespace="CA0"):
     return comment
 
 
-# Test Cases
-test_cases = [
+# ============================================================================
+# PARSER TESTS
+# ============================================================================
+
+class TestParseCommentMapping:
+    """Tests for parse_comment_mapping function"""
+
     # Valid cases
-    ("CA0:L", {"mapping": "L", "note": None}),
-    ("CA0:L #Length parameter", {"mapping": "L", "note": "Length parameter"}),
-    ("CA0:L #`Length #1` #`Design #3`", {"mapping": "L", "note": "`Length #1` #`Design #3`"}),
-    ("CA0:rho #Density", {"mapping": "rho", "note": "Density"}),
-    ("CA0:η #Efficiency", {"mapping": "η", "note": "Efficiency"}),
-    ("CA1:T_in #Inlet temperature", {"mapping": "T_in", "note": "Inlet temperature"}),
-    ("CA0:L  #  Spaces  ", {"mapping": "L", "note": "Spaces"}),
-    (" CA0:L #Note ", {"mapping": "L", "note": "Note"}),
+    def test_simple_mapping(self):
+        assert parse_comment_mapping("CA0:L") == {"mapping": "L", "note": None}
+
+    def test_mapping_with_note(self):
+        assert parse_comment_mapping("CA0:L #Length parameter") == {"mapping": "L", "note": "Length parameter"}
+
+    def test_mapping_with_hash_in_note(self):
+        result = parse_comment_mapping("CA0:L #`Length #1` #`Design #3`")
+        assert result == {"mapping": "L", "note": "`Length #1` #`Design #3`"}
+
+    def test_greek_symbol(self):
+        assert parse_comment_mapping("CA0:rho #Density") == {"mapping": "rho", "note": "Density"}
+
+    def test_unicode_greek_symbol(self):
+        assert parse_comment_mapping("CA0:η #Efficiency") == {"mapping": "η", "note": "Efficiency"}
+
+    def test_different_namespace(self):
+        result = parse_comment_mapping("CA1:T_in #Inlet temperature")
+        assert result == {"mapping": "T_in", "note": "Inlet temperature"}
+
+    def test_extra_spaces(self):
+        assert parse_comment_mapping("CA0:L  #  Spaces  ") == {"mapping": "L", "note": "Spaces"}
+
+    def test_leading_trailing_spaces(self):
+        assert parse_comment_mapping(" CA0:L #Note ") == {"mapping": "L", "note": "Note"}
 
     # Invalid cases
-    ("", {"mapping": None, "note": None}),
-    ("L #Note", {"mapping": None, "note": None}),  # Missing namespace
-    ("XY:L #Note", {"mapping": None, "note": None}),  # Invalid namespace
-    ("CA:L #Note", {"mapping": None, "note": None}),  # No digit after CA
-    ("CAX:L #Note", {"mapping": None, "note": None}),  # Non-digit after CA
-    ("CA0:ratio:1 #Note", {"mapping": None, "note": None}),  # Colon in symbol
-    ("CA0:", {"mapping": None, "note": None}),  # Empty symbol
-    ("CA0: #Note", {"mapping": None, "note": None}),  # Empty symbol with note
-]
+    def test_empty_string(self):
+        assert parse_comment_mapping("") == {"mapping": None, "note": None}
 
-print("=" * 80)
-print("PARSER TEST CASES")
-print("=" * 80)
+    def test_missing_namespace(self):
+        assert parse_comment_mapping("L #Note") == {"mapping": None, "note": None}
 
-for i, (input_str, expected) in enumerate(test_cases, 1):
-    result = parse_comment_mapping(input_str)
-    status = "✅ PASS" if result == expected else "❌ FAIL"
-    print(f"\n{status} Test {i}: {repr(input_str)}")
-    print(f"  Expected: {expected}")
-    print(f"  Got:      {result}")
-    if result != expected:
-        print(f"  MISMATCH!")
+    def test_invalid_namespace_prefix(self):
+        assert parse_comment_mapping("XY:L #Note") == {"mapping": None, "note": None}
 
-# Builder tests
-print("\n" + "=" * 80)
-print("BUILDER TEST CASES")
-print("=" * 80)
+    def test_namespace_no_digit(self):
+        assert parse_comment_mapping("CA:L #Note") == {"mapping": None, "note": None}
 
-builder_tests = [
-    (("L", None), "CA0:L"),
-    (("L", "Length parameter"), "CA0:L #Length parameter"),
-    (("L", "`Length #1` #`Design #3`"), "CA0:L #`Length #1` #`Design #3`"),
-    (("rho", "Density"), "CA0:rho #Density"),
-    (("η", "Efficiency"), "CA0:η #Efficiency"),
-    ((None, "Note"), ""),  # No symbol
-    (("", "Note"), ""),  # Empty symbol
-]
+    def test_namespace_non_digit(self):
+        assert parse_comment_mapping("CAX:L #Note") == {"mapping": None, "note": None}
 
-for i, (args, expected) in enumerate(builder_tests, 1):
-    result = build_comment_string(*args)
-    status = "✅ PASS" if result == expected else "❌ FAIL"
-    print(f"\n{status} Test {i}: build_comment_string{args}")
-    print(f"  Expected: {repr(expected)}")
-    print(f"  Got:      {repr(result)}")
-    if result != expected:
-        print(f"  MISMATCH!")
+    def test_colon_in_symbol(self):
+        assert parse_comment_mapping("CA0:ratio:1 #Note") == {"mapping": None, "note": None}
 
-# Round-trip tests
-print("\n" + "=" * 80)
-print("ROUND-TRIP TEST CASES")
-print("=" * 80)
+    def test_empty_symbol(self):
+        assert parse_comment_mapping("CA0:") == {"mapping": None, "note": None}
 
-round_trip_tests = [
-    ("L", None),
-    ("L", "Length parameter"),
-    ("L", "`Length #1` #`Design #3`"),
-    ("rho", "Density of water"),
-    ("η", "Pump efficiency"),
-    ("T_in", "Inlet temperature"),
-]
+    def test_empty_symbol_with_note(self):
+        assert parse_comment_mapping("CA0: #Note") == {"mapping": None, "note": None}
 
-for i, (symbol, note) in enumerate(round_trip_tests, 1):
-    # Build comment string
-    comment = build_comment_string(symbol, note)
+    def test_none_input(self):
+        assert parse_comment_mapping(None) == {"mapping": None, "note": None}
 
-    # Parse it back
-    parsed = parse_comment_mapping(comment)
+    def test_whitespace_only(self):
+        assert parse_comment_mapping("   ") == {"mapping": None, "note": None}
 
-    # Check if we got back the same symbol and note
-    success = parsed["mapping"] == symbol and parsed["note"] == note
-    status = "✅ PASS" if success else "❌ FAIL"
 
-    print(f"\n{status} Round-trip {i}: symbol={repr(symbol)}, note={repr(note)}")
-    print(f"  Built:  {repr(comment)}")
-    print(f"  Parsed: {parsed}")
-    if not success:
-        print(f"  MISMATCH!")
+# ============================================================================
+# BUILDER TESTS
+# ============================================================================
 
-print("\n" + "=" * 80)
-print("TEST SUMMARY")
-print("=" * 80)
+class TestBuildCommentString:
+    """Tests for build_comment_string function"""
+
+    def test_symbol_only(self):
+        assert build_comment_string("L", None) == "CA0:L"
+
+    def test_symbol_with_note(self):
+        assert build_comment_string("L", "Length parameter") == "CA0:L #Length parameter"
+
+    def test_note_with_hash(self):
+        result = build_comment_string("L", "`Length #1` #`Design #3`")
+        assert result == "CA0:L #`Length #1` #`Design #3`"
+
+    def test_greek_symbol(self):
+        assert build_comment_string("rho", "Density") == "CA0:rho #Density"
+
+    def test_unicode_greek_symbol(self):
+        assert build_comment_string("η", "Efficiency") == "CA0:η #Efficiency"
+
+    def test_none_symbol(self):
+        assert build_comment_string(None, "Note") == ""
+
+    def test_empty_symbol(self):
+        assert build_comment_string("", "Note") == ""
+
+    def test_custom_namespace(self):
+        assert build_comment_string("L", "Note", "CA1") == "CA1:L #Note"
+
+
+# ============================================================================
+# ROUND-TRIP TESTS
+# ============================================================================
+
+class TestRoundTrip:
+    """Tests that build -> parse -> original values match"""
+
+    @pytest.mark.parametrize("symbol,note", [
+        ("L", None),
+        ("L", "Length parameter"),
+        ("L", "`Length #1` #`Design #3`"),
+        ("rho", "Density of water"),
+        ("η", "Pump efficiency"),
+        ("T_in", "Inlet temperature"),
+    ])
+    def test_round_trip(self, symbol, note):
+        # Build comment string
+        comment = build_comment_string(symbol, note)
+
+        # Parse it back
+        parsed = parse_comment_mapping(comment)
+
+        # Check if we got back the same symbol and note
+        assert parsed["mapping"] == symbol
+        assert parsed["note"] == note
