@@ -1,0 +1,152 @@
+### ============================================
+### CalcsLive Plug for Inventor - API Tests
+### Use VS Code REST Client extension
+### ============================================
+
+### Health Check
+GET http://localhost:8000/ HTTP/1.1
+
+###
+
+### Inventor Health Check
+GET http://localhost:8000/inventor/health HTTP/1.1
+
+###
+
+### Get Document Info
+GET http://localhost:8000/inventor/document HTTP/1.1
+
+###
+
+### ============================================
+### PARAMETERS
+### ============================================
+
+### Get All User Parameters
+GET http://localhost:8000/inventor/parameters HTTP/1.1
+
+###
+
+### ============================================
+### MAPPING (Comment field)
+### ============================================
+
+### Set Parameter Mapping (POST required!)
+### Maps Inventor parameter "HeadPulleyDia" to CalcsLive symbol "D"
+POST http://localhost:8000/inventor/parameters/mapping HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "HeadPulleyDia",
+    "symbol": "Dp",
+    "note": "Head Pulley Dia"
+}
+
+###
+
+### Set Mapping with Value Update
+### Updates both the mapping AND the parameter value
+POST http://localhost:8000/inventor/parameters/mapping HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "diameter",
+    "symbol": "D",
+    "note": "Cylinder diameter",
+    "value": 100.0,
+    "unit": "mm"
+}
+
+###
+
+### Remove Mapping (symbol: null clears the mapping)
+POST http://localhost:8000/inventor/parameters/mapping HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "diameter",
+    "symbol": null,
+    "note": null
+}
+
+###
+
+### Delete Mapping (alternative method)
+DELETE http://localhost:8000/inventor/parameters/mapping HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "diameter"
+}
+
+###
+
+### ============================================
+### CREATE PARAMETER
+### ============================================
+
+### Create ArticleId Text Parameter
+POST http://localhost:8000/inventor/parameters/create HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "ArticleId",
+    "value": "3MAV4GNFQ-3FU",
+    "comment": "eg: 3MAV4GNFQ-3FU, taken from article url",
+    "unit": "Text"
+}
+
+###
+
+### Create Numeric Parameter (with unit)
+POST http://localhost:8000/inventor/parameters/create HTTP/1.1
+Content-Type: application/json
+
+{
+    "name": "SafetyFactor",
+    "value": "1.5",
+    "comment": "Design safety factor",
+    "unit": "ul"
+}
+
+###
+
+### ============================================
+### UNIT CONVERSION
+### ============================================
+
+### Convert mm to inches
+POST http://localhost:8000/inventor/convert HTTP/1.1
+Content-Type: application/json
+
+{
+    "value": 609.6,
+    "fromUnit": "mm",
+    "toUnit": "in"
+}
+
+###
+
+### Convert kg to lb
+POST http://localhost:8000/inventor/convert HTTP/1.1
+Content-Type: application/json
+
+{
+    "value": 100,
+    "fromUnit": "kg",
+    "toUnit": "lb"
+}
+
+###
+
+### Convert temperature (C to F)
+POST http://localhost:8000/inventor/convert HTTP/1.1
+Content-Type: application/json
+
+{
+    "value": 100,
+    "fromUnit": "C",
+    "toUnit": "F"
+}
+
+###
