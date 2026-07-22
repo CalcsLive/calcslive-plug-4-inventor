@@ -1,6 +1,8 @@
 # main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.datastructures import MutableHeaders
 from inventor_api import (
     get_user_parameters,
     update_parameter_mapping,
@@ -25,19 +27,65 @@ app = FastAPI(
     version=get_version()
 )
 
-# CORS for CalcsLive dashboard
+# Private Network Access (PNA) middleware — required for Chrome/Brave to allow
+# requests from https://calcslive.com to localhost (loopback address).
+# Chrome sends OPTIONS preflight with Access-Control-Request-Private-Network: true
+# and blocks the request unless the response includes Allow-Private-Network: true.
+#
+# Using raw ASGI (not BaseHTTPMiddleware) — BaseHTTPMiddleware can silently drop
+# headers when the wrapped middleware returns a streaming response.
+class PrivateNetworkAccessMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = {k.lower(): v for k, v in scope.get("headers", [])}
+        method = scope.get("method", "")
+
+        # Intercept PNA preflight — short-circuit before CORSMiddleware sees it
+        if method == "OPTIONS" and b"access-control-request-private-network" in headers:
+            origin = headers.get(b"origin", b"*")
+            await send({
+                "type": "http.response.start",
+                "status": 204,
+                "headers": [
+                    (b"access-control-allow-origin", origin),
+                    (b"access-control-allow-methods", b"*"),
+                    (b"access-control-allow-headers", b"*"),
+                    (b"access-control-allow-private-network", b"true"),
+                    (b"vary", b"origin"),
+                ],
+            })
+            await send({"type": "http.response.body", "body": b""})
+            return
+
+        # Non-preflight: pass through, inject PNA header into the response
+        async def send_with_pna(message: dict) -> None:
+            if message["type"] == "http.response.start":
+                MutableHeaders(scope=message)["access-control-allow-private-network"] = "true"
+            await send(message)
+
+        await self.app(scope, receive, send_with_pna)
+
+# CORS for CalcsLive dashboard (added first = inner layer)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "https://calcslive.com",
         "https://www.calcslive.com",
-        "https://calcslive.com",
-        "https://www.calcslive.com"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Private Network Access middleware (added last = outermost layer, runs first)
+# Must be outermost so it intercepts PNA preflights before CORSMiddleware
+app.add_middleware(PrivateNetworkAccessMiddleware)
 
 @app.get("/")
 def root():
