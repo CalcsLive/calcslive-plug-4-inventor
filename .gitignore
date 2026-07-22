@@ -57,6 +57,9 @@ htmlcov/
 .env
 .env.local
 
+# mkcert certificates (machine-specific, private key must never be committed)
+*.pem
+
 # Temporary files
 tmp/
 temp/
