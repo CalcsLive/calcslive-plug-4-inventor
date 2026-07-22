@@ -74,8 +74,13 @@ jobs:
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "type=${{ github.event.inputs.version_bump }}" >> $GITHUB_OUTPUT
           else
-            # Auto-detect from commit messages
-            COMMITS=$(git log --format=%B -n 10)
+            # Auto-detect from commits since last tag only
+            LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -z "$LAST_TAG" ]; then
+              COMMITS=$(git log --format=%B -n 10)
+            else
+              COMMITS=$(git log ${LAST_TAG}..HEAD --format=%B)
+            fi
             if echo "$COMMITS" | grep -qiE "^(breaking|major):"; then
               echo "type=major" >> $GITHUB_OUTPUT
             elif echo "$COMMITS" | grep -qiE "^(feat|feature|minor):"; then
