@@ -130,8 +130,8 @@ Click "Update 3D Model" → Done!
 ## Architecture
 
 ```
-Inventor User Parameters  ⟷  Bridge Server  ⟷  CalcsLive Dashboard  ⟷  CalcsLive Platform
-   (fx with Comments)      (localhost:8000)        (Web UI)              (Calculation Engine)
+Inventor User Parameters  ⟷  Bridge Server    ⟷  CalcsLive Dashboard  ⟷  CalcsLive Platform
+   (fx with Comments)      (https://localhost:8000)   (Web UI)              (Calculation Engine)
 ```
 
 **Technology Stack**:
@@ -154,37 +154,54 @@ pip install -r requirements.txt
 2. Open or create a Part or Assembly document
 3. Add some fx parameters (e.g., Length, Width, Height)
 
-### 3. Start Bridge Server
+### 3. Set Up HTTPS Certificate (one-time)
+
+Chrome and Brave block connections from `https://calcslive.com` to a plain HTTP local server. The Bridge uses [mkcert](https://github.com/FiloSottile/mkcert) to create a locally-trusted certificate.
 
 ```bash
-python main.py
+# Install mkcert (choose one):
+winget install FiloSottile.mkcert
+# or: choco install mkcert
+# or: download from https://github.com/FiloSottile/mkcert/releases
+
+# Install local CA into Chrome/Brave/Edge trust stores (one-time per machine):
+mkcert -install
+
+# Generate certificate for localhost (run inside the bridge folder):
+mkcert localhost 127.0.0.1
+# Creates: localhost+1.pem  and  localhost+1-key.pem
 ```
 
-Server will start at: `http://localhost:8000`
+### 4. Start Bridge Server
 
-**Or with auto-reload for development**:
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn main:app --host 127.0.0.1 --port 8000 --ssl-certfile=localhost+1.pem --ssl-keyfile=localhost+1-key.pem
 ```
 
-### 4. Connect CalcsLive Dashboard
+Server will start at: `https://localhost:8000`
+
+**With auto-reload for development**:
+```bash
+uvicorn main:app --reload --port 8000 --ssl-certfile=localhost+1.pem --ssl-keyfile=localhost+1-key.pem
+```
+
+### 5. Connect CalcsLive Dashboard
 
 **Option A - Use Production Dashboard** (Recommended):
 1. Open [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard)
 2. Sign in to CalcsLive account (Free tier or higher)
-3. Dashboard auto-detects Bridge connection
-4. Start mapping parameters via drag-and-drop!
+3. **Enable local network access** in Chrome/Brave: click the site info icon (🔒) in the address bar → enable **"Apps on device"** toggle → refresh
+4. Dashboard auto-detects Bridge connection
+5. Start mapping parameters via drag-and-drop!
 
 **Option B - Test API Directly**:
 ```bash
 # Health check
-curl http://localhost:8000/
+curl https://localhost:8000/
 
 # Get all parameters
-curl http://localhost:8000/inventor/parameters
+curl https://localhost:8000/inventor/parameters
 ```
-
-**Note**: Some browsers (Brave) may block localhost connections from HTTPS sites. See [Troubleshooting](#browser-specific-issues) below.
 
 ## API Endpoints
 
@@ -192,14 +209,14 @@ curl http://localhost:8000/inventor/parameters
 
 **`GET /inventor/parameters`** - Get all User Parameters with mappings
 ```bash
-curl http://localhost:8000/inventor/parameters
+curl https://localhost:8000/inventor/parameters
 ```
 
 Returns all User Parameters with parsed Comment field mappings in `CA0:symbol #note` format.
 
 **`POST /inventor/parameters/mapping`** - Update parameter mapping and value
 ```bash
-curl -X POST http://localhost:8000/inventor/parameters/mapping \
+curl -X POST https://localhost:8000/inventor/parameters/mapping \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Length",
@@ -214,7 +231,7 @@ Updates Comment field with `CA0:L #Main beam length` and optionally updates para
 
 **`POST /inventor/parameters/create`** - Create new User Parameter
 ```bash
-curl -X POST http://localhost:8000/inventor/parameters/create \
+curl -X POST https://localhost:8000/inventor/parameters/create \
   -H "Content-Type: application/json" \
   -d '{
     "name": "ArticleId",
@@ -228,7 +245,7 @@ Creates text or numeric parameters. **ArticleId** (text parameter) links Invento
 
 **`GET /inventor/health`** - Check bridge connection status
 ```bash
-curl http://localhost:8000/inventor/health
+curl https://localhost:8000/inventor/health
 ```
 
 Response:
@@ -242,7 +259,7 @@ Response:
 
 **`POST /inventor/convert`** - Convert value between units using Inventor's API
 ```bash
-curl -X POST http://localhost:8000/inventor/convert \
+curl -X POST https://localhost:8000/inventor/convert \
   -H "Content-Type: application/json" \
   -d '{
     "value": 609.6,
@@ -270,8 +287,8 @@ This endpoint leverages Inventor's robust `UnitsOfMeasure.ConvertUnits()` API fo
 
 FastAPI provides automatic interactive documentation:
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: https://localhost:8000/docs
+- **ReDoc**: https://localhost:8000/redoc
 
 ## File Structure
 
@@ -388,17 +405,26 @@ taskkill //F //PID <PID>
 
 ### Browser-Specific Issues
 
-**Brave Browser - "Failed to fetch" Error**:
+**Chrome / Brave — "Apps on device" permission required**:
 
-If using Brave and seeing `ERR_BLOCKED_BY_CLIENT` or "Failed to fetch" errors:
+Chrome 121+ and Brave enforce a **Local Network Access** permission that must be granted once before the dashboard can reach your Bridge.
 
-1. Click **Brave Shields** icon (lion logo) in address bar
+1. Load [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard) with the Bridge running
+2. Click the **site information icon** (🔒 or ⓘ) in the address bar
+3. Find **"Apps on device"** and enable the toggle
+4. Refresh the page
+
+This is a one-time step per browser profile. Edge works without this toggle (different enforcement schedule).
+
+**Brave — additional step if still blocked**:
+
+If Brave Shields block the connection even after enabling "Apps on device":
+
+1. Click the **Brave Shields** icon (lion logo) in the address bar
 2. Toggle **Shields down for this site** (calcslive.com)
 3. Refresh the page
 
-**Why**: Brave's privacy protection blocks localhost connections by default. Disabling Shields for calcslive.com allows dashboard to connect to your local Bridge (localhost:8000).
-
-**Alternative**: Use Chrome, Edge, or Firefox - these browsers allow localhost connections from HTTPS sites without additional configuration.
+**Why HTTPS is required**: Chrome/Brave block requests from a public HTTPS page (`calcslive.com`) to a plain HTTP local server, even on localhost. The mkcert certificate satisfies this check without any browser security warnings.
 
 ### CORS Errors in Browser
 
@@ -418,7 +444,7 @@ For custom development servers, add your origin to `main.py`.
 ### Live Reload
 
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8000 --ssl-certfile=localhost+1.pem --ssl-keyfile=localhost+1-key.pem
 ```
 
 Server auto-restarts on code changes.
@@ -432,6 +458,20 @@ import pdb; pdb.set_trace()
 # Run server
 python main.py
 ```
+
+## Recent Updates (July 2026)
+
+### ✅ HTTPS Bridge (Chrome/Brave Compatibility)
+
+Chrome 121+ and Brave enforce **Private Network Access (PNA)** policy: connections from a public HTTPS page (`calcslive.com`) to a local HTTP server are blocked before the server even receives the request.
+
+**Changes**:
+- Bridge now requires HTTPS — start with `uvicorn` + `--ssl-certfile` / `--ssl-keyfile` flags
+- Setup uses `mkcert` to create a locally-trusted certificate (no browser security warnings)
+- Raw ASGI middleware added to respond correctly to Chrome's PNA preflight (`Access-Control-Allow-Private-Network: true`)
+- Users must enable **"Apps on device"** toggle in Chrome/Brave (one-time, per browser profile)
+
+**Edge** continues to work without these steps (different enforcement schedule for PNA policy).
 
 ## Recent Updates (March 2026)
 
@@ -586,7 +626,7 @@ This open-source project provides a local interoperability bridge between Autode
 This software is designed exclusively for **interactive, single-user, desktop use** in compliance with the Autodesk Software License Agreement:
 
 - ✅ **Permitted**: User-initiated actions via the CalcsLive dashboard (drag-and-drop parameter mapping, clicking "Update 3D Model")
-- ✅ **Permitted**: Local bridge server (localhost:8000) connecting your browser to your local Inventor instance
+- ✅ **Permitted**: Local bridge server (https://localhost:8000) connecting your browser to your local Inventor instance
 - ✅ **Permitted**: Single-user desktop workflow where you control when Inventor parameters are read/written
 
 - ❌ **Prohibited**: Server-based execution where multiple users access a single Inventor instance over a network
@@ -613,6 +653,7 @@ Autodesk®, Inventor®, and the Inventor logo are registered trademarks or trade
 
 ---
 
-**Last Updated**: March 30, 2026
-**Status**: ✅ **Production Ready** - Unit conversion endpoint, userUnit preservation, enhanced sync
+**Last Updated**: July 22, 2026  
+**Status**: ✅  
+**Production Ready** - HTTPS bridge (mkcert), Chrome/Brave PNA compatibility, unit conversion, userUnit preservation  
 **Dashboard**: [calcslive.com/inventor/dashboard](https://www.calcslive.com/inventor/dashboard)
