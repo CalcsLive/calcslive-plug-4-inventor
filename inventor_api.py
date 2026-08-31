@@ -411,6 +411,34 @@ def update_parameter_mapping(name: str, symbol: Optional[str] = None, note: Opti
         pythoncom.CoUninitialize()
 
 
+def update_document() -> Dict[str, Any]:
+    """
+    Trigger Inventor to update the active document and refresh the viewport.
+    Equivalent to clicking the Update button in Inventor.
+    """
+    pythoncom.CoInitialize()
+    try:
+        app = win32com.client.GetActiveObject("Inventor.Application")
+        doc = app.ActiveDocument
+
+        if doc is None:
+            return {"success": False, "error": "No active Inventor document"}
+
+        doc.Update()
+        app.ActiveView.Update()
+
+        return {"success": True, "message": "Document updated successfully"}
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "errorType": type(e).__name__
+        }
+    finally:
+        pythoncom.CoUninitialize()
+
+
 def create_user_parameter(name: str, value: str = "", comment: str = "", unit: str = "Text") -> Dict[str, Any]:
     """
     Create a new User Parameter in active Inventor document.

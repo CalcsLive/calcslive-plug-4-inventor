@@ -6,6 +6,7 @@ from starlette.datastructures import MutableHeaders
 from inventor_api import (
     get_user_parameters,
     update_parameter_mapping,
+    update_document,
     create_user_parameter,
     convert_units
 )
@@ -208,6 +209,21 @@ def create_parameter(data: dict):
 
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error"))
+
+    return result
+
+
+@app.post("/inventor/document/update")
+def trigger_document_update():
+    """
+    Trigger Inventor to update the 3D model after parameter changes.
+    Call this once after all parameter values have been set.
+    Equivalent to clicking the Update button in Inventor.
+    """
+    result = update_document()
+
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error"))
 
     return result
 
