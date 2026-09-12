@@ -91,7 +91,21 @@ app.add_middleware(PrivateNetworkAccessMiddleware)
 @app.get("/")
 def root():
     """Health check endpoint"""
-    return {"status": "ok", "service": "CalcsLive Plug for Inventor", "version": get_version()}
+    return {
+        "status": "ok",
+        "service": "CalcsLive Plug for Inventor",
+        "version": get_version(),
+        "endpoints": [
+            {"method": "GET",    "path": "/inventor/health",              "description": "Health check"},
+            {"method": "GET",    "path": "/inventor/document",            "description": "Active document info"},
+            {"method": "GET",    "path": "/inventor/parameters",          "description": "Get all user parameters with mappings"},
+            {"method": "POST",   "path": "/inventor/parameters/mapping",  "description": "Set or update parameter mapping and value"},
+            {"method": "DELETE", "path": "/inventor/parameters/mapping",  "description": "Remove mapping from parameter"},
+            {"method": "POST",   "path": "/inventor/parameters/create",   "description": "Create new user parameter"},
+            {"method": "POST",   "path": "/inventor/document/update",     "description": "Trigger model refresh (doc.Update + ActiveView.Update)"},
+            {"method": "POST",   "path": "/inventor/convert",             "description": "Convert value between units via Inventor API"},
+        ]
+    }
 
 @app.get("/inventor/health")
 def health_check():

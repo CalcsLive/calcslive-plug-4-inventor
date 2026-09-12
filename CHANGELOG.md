@@ -8,18 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Multi-domain support for CalcsLive platform (calcslive.com + calcs.live)
-- Enhanced CORS configuration for both primary and legacy domains
+- `POST /inventor/document/update` endpoint — triggers `doc.Update()` + `ActiveView.Update()` via COM so the dashboard can auto-refresh the 3D model after pushing parameter changes
+- Root endpoint `GET /` now returns an `endpoints` array listing all available routes with method, path, and description
 
 ### Changed
-- Updated all documentation links to use www.calcslive.com as primary domain
-- Corrected API endpoint documentation (/inventor/health instead of /inventor/status)
-- Updated dashboard URLs throughout documentation
-- Updated Brave browser troubleshooting instructions for new domain
+- CLAUDE.md: documented `POST /inventor/document/update`, added "Starting the Bridge" section with `C:\E3d\auto-scripts\inventor-bridge.bat` global launcher pattern
+- README.md: added `POST /inventor/document/update` to API Endpoints section and Project Status checklist
+
+## [1.3.0] - 2026-07-22
+
+### Added
+- **HTTPS Bridge**: Bridge now requires HTTPS — start with `uvicorn` + `--ssl-certfile` / `--ssl-keyfile` flags using mkcert locally-trusted certificate
+- **Private Network Access (PNA) middleware**: Raw ASGI middleware responds correctly to Chrome's PNA preflight (`Access-Control-Allow-Private-Network: true`)
+- **mkcert setup instructions**: README quick start covers one-time certificate generation
 
 ### Fixed
-- CORS configuration now allows requests from both calcslive.com and calcs.live domains
-- Documentation consistency across README and code comments
+- Chrome 121+ and Brave now connect to bridge without security errors (PNA policy compliance)
+
+### Changed
+- HTTPS required for Chrome/Brave — plain HTTP no longer supported
+- README updated with Chrome/Brave "Apps on device" toggle instructions and Brave Shields workaround
+
+## [1.2.0] - 2026-03-xx
+
+### Added
+- `POST /inventor/convert` endpoint — unit conversion via Inventor's `UnitsOfMeasure.ConvertUnits()` API
+- `userValue` / `userUnit` fields in parameter export — preserves user-typed unit from expressions (e.g., "24 in" when display is "mm")
+
+### Notes
+- Temperature conversions (°C, °F, K) not supported by Inventor's API — use CalcsLive for thermodynamics
 
 ## [1.0.0] - 2025-11-16
 
@@ -87,6 +104,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **Unreleased**: `/inventor/document/update` endpoint, root endpoint listing
+- **v1.3.0** (2026-07-22): HTTPS bridge, Chrome/Brave PNA compatibility
+- **v1.2.0** (2026-03): Unit conversion endpoint, userUnit preservation
 - **v1.0.0** (2025-11-16): Production ready release with ArticleId management
 - **v0.9.0** (2025-11-14): Feature complete with full EDM workflow
 - **v0.1.0** (2025-11-01): Initial proof of concept
@@ -120,5 +140,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-**Last Updated**: January 6, 2026
-**Current Version**: 1.0.0 (with multi-domain support)
+**Last Updated**: September 12, 2026
+**Current Version**: 1.3.0 (unreleased changes pending next tag)

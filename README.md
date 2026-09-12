@@ -243,6 +243,17 @@ curl -X POST https://localhost:8000/inventor/parameters/create \
 
 Creates text or numeric parameters. **ArticleId** (text parameter) links Inventor model to CalcsLive article.
 
+**`POST /inventor/document/update`** - Trigger Inventor to refresh the 3D model
+```bash
+curl -X POST https://localhost:8000/inventor/document/update
+```
+
+Calls `doc.Update()` + `ActiveView.Update()` via COM — equivalent to clicking the Update button in Inventor. Call once after all parameter values have been pushed.
+
+```json
+{ "success": true, "message": "Document updated successfully" }
+```
+
 **`GET /inventor/health`** - Check bridge connection status
 ```bash
 curl https://localhost:8000/inventor/health
@@ -520,6 +531,7 @@ Chrome 121+ and Brave enforce **Private Network Access (PNA)** policy: connectio
 - [x] Article change confirmation workflow
 - [x] Error handling and validation
 - [x] Comprehensive testing (23 unit tests)
+- [x] Document update endpoint (`POST /inventor/document/update`)
 
 **📋 Future Enhancements**:
 - [ ] Standalone EXE (PyInstaller)
